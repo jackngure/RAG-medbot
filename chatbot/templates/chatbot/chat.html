@@ -1,0 +1,454 @@
+<!-- chatbot/templates/chatbot/chat.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kenya Medical Assistant</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .chat-container {
+            width: 90%;
+            max-width: 500px;
+            height: 90vh;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .chat-header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+        
+        .chat-header p {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .message.user {
+            align-items: flex-end;
+        }
+        
+        .message.bot {
+            align-items: flex-start;
+        }
+        
+        .message-content {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+        
+        .message.user .message-content {
+            background: #667eea;
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+        
+        .message.bot .message-content {
+            background: white;
+            color: #333;
+            border-bottom-left-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .emergency-badge {
+            background: #f44336;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            margin-bottom: 5px;
+        }
+        
+        .emergency-map {
+            height: 300px;
+            margin: 10px 0;
+            border-radius: 10px;
+            display: none;
+        }
+        
+        .input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 10px;
+        }
+        
+        #user-input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 25px;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        
+        #user-input:focus {
+            border-color: #667eea;
+        }
+        
+        #send-button {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: transform 0.2s;
+        }
+        
+        #send-button:hover {
+            transform: scale(1.1);
+        }
+        
+        .hospital-list {
+            margin-top: 10px;
+            background: white;
+            border-radius: 10px;
+            padding: 10px;
+        }
+        
+        .hospital-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .hospital-item:last-child {
+            border-bottom: none;
+        }
+        
+        .hospital-name {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .hospital-distance {
+            font-size: 0.8rem;
+            color: #666;
+        }
+        
+        .typing-indicator {
+            display: flex;
+            padding: 12px 16px;
+            background: white;
+            border-radius: 18px;
+            border-bottom-left-radius: 5px;
+            width: fit-content;
+        }
+        
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: #999;
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: typing 1s infinite;
+        }
+        
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-10px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1>🩺 Kenya Medical Assistant</h1>
+            <p>Your 24/7 First Aid Guide | Emergency Detection</p>
+        </div>
+        
+        <div class="messages-container" id="messages-container">
+            <div class="message bot">
+                <div class="message-content">
+                    👋 Hello! I'm your Kenya Medical Assistant.<br><br>
+                    Describe your symptoms and I'll provide first aid guidance.<br>
+                    For example: "I have fever, headache, and I'm feeling cold"<br><br>
+                    <strong>⚠️ In case of emergency, I'll help you find nearby hospitals.</strong>
+                </div>
+            </div>
+        </div>
+        
+        <div id="emergency-map" class="emergency-map"></div>
+        
+        <div class="input-container">
+            <input type="text" id="user-input" placeholder="Describe your symptoms..." autocomplete="off">
+            <button id="send-button" onclick="sendMessage()">➤</button>
+        </div>
+    </div>
+
+    <script>
+        let sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        let map;
+        let userMarker;
+        let isWaitingForResponse = false;
+        
+        const messagesContainer = document.getElementById('messages-container');
+        
+        function addMessage(text, isUser, isEmergency = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
+            
+            if (isEmergency) {
+                const emergencyBadge = document.createElement('div');
+                emergencyBadge.className = 'emergency-badge';
+                emergencyBadge.textContent = '🚨 EMERGENCY DETECTED';
+                messageDiv.appendChild(emergencyBadge);
+            }
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            
+            // Convert markdown-style formatting to HTML
+            let formattedText = text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/\n/g, '<br>');
+            
+            contentDiv.innerHTML = formattedText;
+            messageDiv.appendChild(contentDiv);
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        function showTypingIndicator() {
+            const indicator = document.createElement('div');
+            indicator.className = 'message bot';
+            indicator.id = 'typing-indicator';
+            indicator.innerHTML = `
+                <div class="typing-indicator">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            `;
+            messagesContainer.appendChild(indicator);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        function removeTypingIndicator() {
+            const indicator = document.getElementById('typing-indicator');
+            if (indicator) {
+                indicator.remove();
+            }
+        }
+        
+        async function sendMessage() {
+            const input = document.getElementById('user-input');
+            const message = input.value.trim();
+            
+            if (!message || isWaitingForResponse) return;
+            
+            // Add user message
+            addMessage(message, true);
+            input.value = '';
+            
+            // Show typing indicator
+            showTypingIndicator();
+            isWaitingForResponse = true;
+            
+            try {
+                const response = await fetch('/process-message/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        session_id: sessionId
+                    })
+                });
+                
+                const data = await response.json();
+                removeTypingIndicator();
+                
+                if (data.type === 'emergency') {
+                    addMessage(data.message, false, true);
+                    requestUserLocation();
+                } else if (data.type === 'normal') {
+                    addMessage(data.message, false);
+                } else {
+                    addMessage('Sorry, I encountered an error. Please try again.', false);
+                }
+                
+            } catch (error) {
+                removeTypingIndicator();
+                addMessage('Network error. Please check your connection.', false);
+            } finally {
+                isWaitingForResponse = false;
+            }
+        }
+        
+        function requestUserLocation() {
+            if (navigator.geolocation) {
+                addMessage("📍 Please allow location access to find nearby hospitals...", false);
+                navigator.geolocation.getCurrentPosition(showEmergencyMap, handleLocationError);
+            } else {
+                addMessage("❌ Geolocation is not supported by your browser. Please call emergency services immediately.", false);
+            }
+        }
+        
+        function showEmergencyMap(position) {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            
+            // Show map
+            const mapElement = document.getElementById('emergency-map');
+            mapElement.style.display = 'block';
+            
+            // Initialize map
+            map = L.map('emergency-map').setView([lat, lng], 14);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+            
+            // Add user marker
+            userMarker = L.marker([lat, lng]).addTo(map)
+                .bindPopup('You are here')
+                .openPopup();
+            
+            // Fetch nearby hospitals
+            fetchNearbyHospitals(lat, lng);
+        }
+        
+        async function fetchNearbyHospitals(lat, lng) {
+            try {
+                const response = await fetch('/get-nearby-hospitals/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        latitude: lat,
+                        longitude: lng
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.hospitals && data.hospitals.length > 0) {
+                    // Add hospital markers
+                    data.hospitals.forEach(hospital => {
+                        const marker = L.marker([hospital.lat, hospital.lon]).addTo(map);
+                        
+                        marker.bindPopup(`
+                            <b>${hospital.name}</b><br>
+                            📍 ${hospital.distance} km away<br>
+                            ${hospital.address ? '📍 ' + hospital.address : ''}<br>
+                            ${hospital.phone ? '📞 ' + hospital.phone : ''}<br>
+                            <a href="https://www.openstreetmap.org/directions?from=${lat},${lng}&to=${hospital.lat},${hospital.lon}" 
+                               target="_blank">🚗 Get Directions</a>
+                        `);
+                    });
+                    
+                    // Create hospital list
+                    let hospitalList = '\n\n**Nearby Medical Facilities:**\n';
+                    data.hospitals.slice(0, 3).forEach(h => {
+                        hospitalList += `\n• **${h.name}** - ${h.distance} km away`;
+                    });
+                    
+                    addMessage(`🏥 Found ${data.hospitals.length} medical facilities near you.${hospitalList}`, false);
+                } else {
+                    addMessage("❌ No hospitals found nearby. Please call emergency services: 911 or 112", false);
+                }
+                
+            } catch (error) {
+                console.error('Error fetching hospitals:', error);
+                addMessage("⚠️ Error finding hospitals. Please call emergency services immediately.", false);
+            }
+        }
+        
+        function handleLocationError(error) {
+            let message = "⚠️ Location error: ";
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    message += "Please enable location access for emergency help.";
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    message += "Location unavailable. Please call emergency services: 911 or 112";
+                    break;
+                case error.TIMEOUT:
+                    message += "Location request timed out. Please try again.";
+                    break;
+            }
+            addMessage(message, false);
+        }
+        
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        // Enter key to send
+        document.getElementById('user-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
