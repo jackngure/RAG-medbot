@@ -13,39 +13,40 @@ class DiseaseAdmin(admin.ModelAdmin):
 
 @admin.register(Symptom)
 class SymptomAdmin(admin.ModelAdmin):
-    list_display = ('name', 'display_diseases')
+    list_display = ('name', 'get_diseases')
     search_fields = ('name', 'alternative_names')
-    filter_horizontal = ('diseases',)  # Makes selecting diseases easier
+    filter_horizontal = ('diseases',)
     
-    def display_diseases(self, obj):
+    def get_diseases(self, obj):
         return ", ".join([disease.name for disease in obj.diseases.all()[:3]])
-    display_diseases.short_description = 'Associated Diseases'
+    get_diseases.short_description = 'Associated Diseases'
 
 @admin.register(FirstAidProcedure)
 class FirstAidProcedureAdmin(admin.ModelAdmin):
-    list_display = ('title', 'disease', 'truncated_steps')
+    list_display = ('title', 'disease', 'short_steps')
     search_fields = ('title', 'steps', 'disease__name')
     list_filter = ('disease',)
     
-    def truncated_steps(self, obj):
+    def short_steps(self, obj):
         return obj.steps[:50] + '...' if len(obj.steps) > 50 else obj.steps
-    truncated_steps.short_description = 'Steps'
+    short_steps.short_description = 'Steps'
 
 @admin.register(EmergencyKeyword)
 class EmergencyKeywordAdmin(admin.ModelAdmin):
-    list_display = ('keyword', 'severity', 'truncated_message')
+    list_display = ('keyword', 'severity', 'short_response')
     search_fields = ('keyword', 'description', 'response_message')
     list_filter = ('severity',)
     
-    def truncated_message(self, obj):
+    def short_response(self, obj):
         return obj.response_message[:50] + '...' if len(obj.response_message) > 50 else obj.response_message
-    truncated_message.short_description = 'Response'
+    short_response.short_description = 'Response'
 
 @admin.register(ChatSession)
 class ChatSessionAdmin(admin.ModelAdmin):
-    list_display = ('session_id', 'user', 'started_at', 'last_activity', 'message_count')
-    search_fields = ('session_id', 'user__username')
-    list_filter = ('started_at', 'last_activity')
+    list_display = ('session_id', 'created_at', 'last_activity', 'message_count')
+    search_fields = ('session_id',)
+    list_filter = ('created_at', 'last_activity')
+    readonly_fields = ('session_id', 'created_at', 'last_activity')
     
     def message_count(self, obj):
         return obj.messages.count()
@@ -53,10 +54,11 @@ class ChatSessionAdmin(admin.ModelAdmin):
 
 @admin.register(ChatMessage)
 class ChatMessageAdmin(admin.ModelAdmin):
-    list_display = ('session', 'role', 'timestamp', 'emergency_detected', 'truncated_content')
+    list_display = ('session', 'role', 'timestamp', 'emergency_detected', 'short_content')
     search_fields = ('content',)
     list_filter = ('role', 'emergency_detected', 'timestamp')
+    readonly_fields = ('session', 'role', 'content', 'timestamp', 'emergency_detected')
     
-    def truncated_content(self, obj):
+    def short_content(self, obj):
         return obj.content[:50] + '...' if len(obj.content) > 50 else obj.content
-    truncated_content.short_description = 'Message'
+    short_content.short_description = 'Message'
