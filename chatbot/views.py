@@ -6,6 +6,7 @@ from django.views.decorators.http import require_http_methods
 import json
 import traceback
 import logging
+from django.utils import timezone
 from .models import ChatSession, ChatMessage, UserProfile, SymptomLog, EmergencyLog, FirstAidFeedback
 from .nlp_processor import MedicalNLPProcessor
 from .rag_retriever import get_rag_retriever

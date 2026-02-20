@@ -9,3 +9,4 @@ django-cors-headers==4.2.0
 channels==4.0.0  # For real-time chat
 redis==5.0.0  # For caching
 requests==2.31.0
+https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.0/en_core_web_sm-3.7.0-py3-none-any.whl
