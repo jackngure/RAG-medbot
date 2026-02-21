@@ -9,7 +9,17 @@ class DiseaseAdmin(admin.ModelAdmin):
     list_filter = ('created_at',)
     
     def symptom_count(self, obj):
-        return obj.symptoms.count()
+        try:
+            return obj.symptoms.count()
+        except Exception:
+            # fallback if symptoms is a list/None
+            symptoms = getattr(obj, 'symptoms', None)
+            if symptoms is None:
+                return 0
+            try:
+                return len(symptoms)
+            except Exception:
+                return 0
     symptom_count.short_description = 'Number of Symptoms'
 
 @admin.register(Symptom)
@@ -19,7 +29,17 @@ class SymptomAdmin(admin.ModelAdmin):
     filter_horizontal = ('diseases',)
     
     def get_diseases(self, obj):
-        return ", ".join([disease.name for disease in obj.diseases.all()[:3]])
+        try:
+            diseases_qs = obj.diseases.all()
+            names = [d.name for d in diseases_qs[:3]]
+        except Exception:
+            # If diseases is a list/iterable or attribute not a manager
+            diseases_attr = getattr(obj, 'diseases', None) or []
+            try:
+                names = [d.name if hasattr(d, 'name') else str(d) for d in list(diseases_attr)[:3]]
+            except Exception:
+                names = []
+        return ", ".join(names)
     get_diseases.short_description = 'Associated Diseases'
 
 @admin.register(FirstAidProcedure)
@@ -29,7 +49,8 @@ class FirstAidProcedureAdmin(admin.ModelAdmin):
     list_filter = ('disease',)
     
     def short_steps(self, obj):
-        return obj.steps[:50] + '...' if len(obj.steps) > 50 else obj.steps
+        steps = getattr(obj, 'steps', '') or ''
+        return steps[:50] + '...' if len(steps) > 50 else steps
     short_steps.short_description = 'Steps'
 
 @admin.register(EmergencyKeyword)
@@ -39,7 +60,8 @@ class EmergencyKeywordAdmin(admin.ModelAdmin):
     list_filter = ('severity',)
     
     def short_response(self, obj):
-        return obj.response_message[:50] + '...' if len(obj.response_message) > 50 else obj.response_message
+        response = getattr(obj, 'response_message', '') or ''
+        return response[:50] + '...' if len(response) > 50 else response
     short_response.short_description = 'Response'
 
 @admin.register(ChatSession)
@@ -50,7 +72,14 @@ class ChatSessionAdmin(admin.ModelAdmin):
     readonly_fields = ('session_id', 'created_at', 'last_activity')
     
     def message_count(self, obj):
-        return obj.messages.count()
+        try:
+            return obj.messages.count()
+        except Exception:
+            messages = getattr(obj, 'messages', None) or []
+            try:
+                return len(messages)
+            except Exception:
+                return 0
     message_count.short_description = 'Total Messages'
 
 @admin.register(ChatMessage)
@@ -61,7 +90,8 @@ class ChatMessageAdmin(admin.ModelAdmin):
     readonly_fields = ('session', 'role', 'content', 'timestamp', 'emergency_detected')
     
     def short_content(self, obj):
-        return obj.content[:50] + '...' if len(obj.content) > 50 else obj.content
+        content = getattr(obj, 'content', '') or ''
+        return content[:50] + '...' if len(content) > 50 else content
     short_content.short_description = 'Message'
 
 @admin.register(UserProfile)
@@ -72,7 +102,11 @@ class UserProfileAdmin(admin.ModelAdmin):
     readonly_fields = ('session_id', 'ip_address', 'user_agent', 'first_seen', 'last_seen')
     
     def session_id_short(self, obj):
-        return str(obj.session_id)[:8] + '...'
+        sid = getattr(obj, 'session_id', None)
+        if sid is None:
+            return ''
+        s = str(sid)
+        return s[:8] + '...' if len(s) > 8 else s
     session_id_short.short_description = 'Session ID'
 
 @admin.register(SymptomLog)
@@ -83,11 +117,29 @@ class SymptomLogAdmin(admin.ModelAdmin):
     readonly_fields = ('user_profile', 'symptoms', 'raw_input', 'matched_diseases', 'timestamp')
     
     def symptoms_summary(self, obj):
-        return ', '.join(obj.symptoms[:3])
+        symptoms_attr = getattr(obj, 'symptoms', None) or []
+        try:
+            # If it's a manager/queryset
+            items = list(symptoms_attr.all()[:3]) if hasattr(symptoms_attr, 'all') else list(symptoms_attr)[:3]
+            # Try to get a readable representation
+            names = [s.name if hasattr(s, 'name') else str(s) for s in items]
+        except Exception:
+            try:
+                names = [str(s) for s in list(symptoms_attr)[:3]]
+            except Exception:
+                names = []
+        return ', '.join(names)
     symptoms_summary.short_description = 'Symptoms'
     
     def disease_count(self, obj):
-        return len(obj.matched_diseases)
+        matched = getattr(obj, 'matched_diseases', None) or []
+        try:
+            return len(matched)
+        except Exception:
+            try:
+                return matched.count()
+            except Exception:
+                return 0
     disease_count.short_description = 'Matches'
 
 @admin.register(EmergencyLog)
@@ -97,7 +149,16 @@ class EmergencyLogAdmin(admin.ModelAdmin):
     search_fields = ('raw_input',)
     
     def keywords_summary(self, obj):
-        return ', '.join(obj.emergency_keywords[:3])
+        keywords_attr = getattr(obj, 'emergency_keywords', None) or []
+        try:
+            items = list(keywords_attr.all()[:3]) if hasattr(keywords_attr, 'all') else list(keywords_attr)[:3]
+            names = [k.keyword if hasattr(k, 'keyword') else str(k) for k in items]
+        except Exception:
+            try:
+                names = [str(k) for k in list(keywords_attr)[:3]]
+            except Exception:
+                names = []
+        return ', '.join(names)
     keywords_summary.short_description = 'Keywords'
 
 @admin.register(FirstAidFeedback)
