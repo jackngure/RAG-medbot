@@ -34,7 +34,7 @@ class RAGRetriever:
 
         # Fetch only needed fields, prefetch first aid procedures to avoid N+1 later
         diseases = Disease.objects.only('id', 'name', 'common_symptoms').prefetch_related(
-            Prefetch('firstaidprocedure_set', queryset=FirstAidProcedure.objects.only(
+            Prefetch('first_aid_procedures', queryset=FirstAidProcedure.objects.only(
                 'disease_id', 'steps', 'warning_notes', 'when_to_seek_help'
             ), to_attr='prefetched_first_aid')
         ).all()
