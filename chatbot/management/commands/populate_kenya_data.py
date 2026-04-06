@@ -38,13 +38,13 @@ class Command(BaseCommand):
         self.stdout.write(f'   • {EmergencyKeyword.objects.count()} emergency keywords added')
 
     def _populate_data(self):
-        # Clear existing data
+        # Clearing existing data
         Disease.objects.all().delete()
         Symptom.objects.all().delete()
         FirstAidProcedure.objects.all().delete()
         EmergencyKeyword.objects.all().delete()
 
-        # Create Symptoms
+        # Creating Symptoms
         symptoms_data = {
             'fever': ('fever', 'high temperature, hot body, sweating, chills, feeling hot even when cold'),
             'headache': ('headache', 'head pain, migraine, throbbing head, pressure in head'),
@@ -227,7 +227,7 @@ class Command(BaseCommand):
             symptoms['dehydration'], symptoms['wound']
         )
 
-        # Create First Aid Procedures
+        # Creating First Aid Procedures
         first_aid_data = [
             (diseases['malaria'], 'Malaria First Aid',
              '1. REST: Lie down and rest. Malaria makes you weak.\n\n'
@@ -452,7 +452,7 @@ class Command(BaseCommand):
                 when_to_seek_help=when
             )
 
-        # Create Emergency Keywords
+        # Creating Emergency Keywords
         emergency_list = [
             {'keyword': 'unconscious', 'severity': 'CRITICAL',
              'response': '🚨 EMERGENCY - Person is unconscious. Call 911 or 112 immediately.\n\nWHILE WAITING:\n• Check if they are breathing\n• If breathing, place on side\n• If not breathing, start CPR: Push hard and fast in center of chest\n• Loosen tight clothing'},
