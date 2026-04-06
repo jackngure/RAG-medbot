@@ -59,7 +59,7 @@
         }
         
         /* ────────────────────────────────────────────────────────────────────
-           APP LAYOUT - Sidebar + Main (Version 2 style)
+           APP LAYOUT - Sidebar + Main
         ──────────────────────────────────────────────────────────────────── */
         .app {
             display: grid;
@@ -355,7 +355,7 @@
         
         .panel.active { display: flex; }
         
-        /* Chat Messages Container - Version 1 class name preserved */
+        /* Chat Messages Container */
         .messages-container {
             flex: 1;
             overflow-y: auto;
@@ -370,7 +370,7 @@
         .messages-container::-webkit-scrollbar-track { background: transparent; }
         .messages-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
         
-        /* Message Bubbles - Version 1 compatible */
+        /* Message Bubbles */
         .message {
             margin-bottom: 0;
             display: flex;
@@ -504,12 +504,6 @@
             50% { opacity: 0.7; }
         }
         
-        .message.bot.emergency .message-content {
-            background: var(--red-pale);
-            border: 1px solid #fca5a5;
-            border-left: 3px solid var(--red);
-        }
-        
         /* Emergency Map Container */
         .emergency-map {
             display: none;
@@ -554,7 +548,7 @@
             30% { transform: translateY(-6px); opacity: 1; }
         }
         
-        /* Input Bar */
+        /* Input Container - FIXED */
         .input-container {
             padding: 16px 28px 20px;
             background: var(--white);
@@ -592,7 +586,10 @@
             min-height: 24px;
         }
         
-        #user-input::placeholder { color: var(--text-muted); }
+        #user-input::placeholder { 
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
         
         #send-button {
             width: 40px;
@@ -629,6 +626,7 @@
             overflow-x: auto;
             white-space: nowrap;
             border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
         }
         
         .quick-action-btn {
@@ -832,7 +830,7 @@
         .feedback-btn[data-rating="3"] { background: #FFC107; color: #2C3E50; }
         .feedback-btn[data-rating="1"] { background: #F44336; color: white; }
         
-        #feedback-text {
+        #feedback-textarea {
             width: 100%;
             padding: 10px;
             border: 1px solid var(--border);
@@ -843,7 +841,7 @@
             font-size: 0.85rem;
         }
         
-        #feedback-text:focus {
+        #feedback-textarea:focus {
             border-color: var(--green-bright);
             outline: none;
         }
@@ -930,7 +928,7 @@
 
 <div class="app">
     
-    <!-- SIDEBAR (Version 2 style) -->
+    <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
         <div class="brand">
             <div class="brand-icon">🌿</div>
@@ -1042,10 +1040,13 @@
                 <!-- Emergency Leaflet Map Container -->
                 <div id="emergency-map" class="emergency-map"></div>
                 
-                <!-- Input Container -->
+                <!-- INPUT CONTAINER - FIXED WITH TEXTAREA -->
                 <div class="input-container">
                     <div class="input-row">
-                        <textarea id="user-input" placeholder="Describe your symptoms here..." rows="1"></textarea>
+                        <textarea id="user-input" 
+                                  placeholder="Describe your symptoms here... e.g., 'I have fever, headache and body aches'" 
+                                  rows="1" 
+                                  maxlength="5000"></textarea>
                         <button id="send-button" onclick="sendMessage()">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <line x1="22" y1="2" x2="11" y2="13"></line>
@@ -1100,7 +1101,7 @@
         <button class="feedback-btn" data-rating="3" onclick="submitFeedback(3)">😐 Okay</button>
         <button class="feedback-btn" data-rating="1" onclick="submitFeedback(1)">👎 Not Helpful</button>
     </div>
-    <textarea id="feedback-text" placeholder="Any comments? (optional)" rows="3"></textarea>
+    <textarea id="feedback-textarea" placeholder="Any comments? (optional)" rows="3"></textarea>
     <button class="close-btn" onclick="closeFeedback()">Close</button>
 </div>
 
@@ -1109,7 +1110,7 @@
     // SESSION MANAGEMENT - Version 1 Logic (Preserved for Redis backend)
     // ═══════════════════════════════════════════════════════════════════════
     
-    // Generate or retrieve session ID (same as Version 1)
+    // Generate or retrieve session ID
     let sessionId = localStorage.getItem('chat_session_id');
     if (!sessionId) {
         sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -1119,7 +1120,7 @@
     // Display session ID
     document.getElementById('session-id-display').textContent = sessionId.substr(0, 8) + '...';
     
-    // State variables (Version 1 compatible)
+    // State variables
     let map;
     let userMarker;
     let isWaitingForResponse = false;
@@ -1129,7 +1130,7 @@
     const messagesContainer = document.getElementById('messages-container');
     
     // ═══════════════════════════════════════════════════════════════════════
-    // TAB SWITCHING (Version 2 style)
+    // TAB SWITCHING
     // ═══════════════════════════════════════════════════════════════════════
     function switchTab(tabName) {
         // Update tab buttons
@@ -1148,7 +1149,7 @@
     }
     
     // ═══════════════════════════════════════════════════════════════════════
-    // MESSAGE HISTORY (localStorage) - Version 1 logic preserved
+    // MESSAGE HISTORY (localStorage)
     // ═══════════════════════════════════════════════════════════════════════
     function loadMessageHistory() {
         const history = localStorage.getItem('chat_history_' + sessionId);
@@ -1181,23 +1182,21 @@
     }
     
     // ═══════════════════════════════════════════════════════════════════════
-    // MESSAGE RENDERING - Enhanced with markdown formatting
+    // MESSAGE RENDERING
     // ═══════════════════════════════════════════════════════════════════════
     function formatMarkdown(text) {
-        // Convert markdown-style formatting to HTML
         let formatted = text
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/•/g, '<br>•')
             .replace(/\n/g, '<br>');
         
-        // Handle numbered steps (e.g., "1. KEYWORD: text")
+        // Handle numbered steps
         formatted = formatted.replace(/(\d+)\.\s+\*?([A-Z][A-Z\s]+)\*?:\s*(.*?)(?=<br>|$)/g, 
             '<div class="step-line"><span class="step-num">$1</span><span><strong>$2</strong>: $3</span></div>');
         
         // Handle warning boxes
         formatted = formatted.replace(/⚠️ WARNING:(.*?)(?=<br>|$)/g, 
-            '<div class="warning-box">⚠️ $1</div>');
+            '<div class="warning-box">⚠️ WARNING:$1</div>');
         
         // Handle seek help boxes
         formatted = formatted.replace(/(Seek help|Go to hospital|When to Seek Help):(.*?)(?=<br>|$)/g, 
@@ -1228,7 +1227,6 @@
         const contentDiv = document.createElement('div');
         contentDiv.className = 'message-content';
         
-        // Apply markdown formatting for bot messages
         if (!isUser) {
             contentDiv.innerHTML = formatMarkdown(text);
         } else {
@@ -1273,7 +1271,7 @@
     }
     
     // ═══════════════════════════════════════════════════════════════════════
-    // QUICK MESSAGE & SEND MESSAGE (Version 1 logic preserved)
+    // SEND MESSAGE
     // ═══════════════════════════════════════════════════════════════════════
     function setQuickMessage(message) {
         document.getElementById('user-input').value = message;
@@ -1307,6 +1305,7 @@
         // Add user message
         addMessage(message, true);
         input.value = '';
+        input.style.height = 'auto';
         
         // Show typing indicator
         showTypingIndicator();
@@ -1361,7 +1360,7 @@
     }
     
     // ═══════════════════════════════════════════════════════════════════════
-    // EMERGENCY MAP & GEOLOCATION (Version 1 logic preserved)
+    // EMERGENCY MAP & GEOLOCATION
     // ═══════════════════════════════════════════════════════════════════════
     function requestUserLocation() {
         if (navigator.geolocation) {
@@ -1376,12 +1375,10 @@
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
         
-        // Show map container
         const mapElement = document.getElementById('emergency-map');
         mapElement.style.display = 'block';
         mapElement.classList.add('visible');
         
-        // Initialize map
         if (map) {
             map.remove();
         }
@@ -1392,12 +1389,10 @@
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
         
-        // Add user marker
         userMarker = L.marker([lat, lng]).addTo(map)
             .bindPopup('You are here')
             .openPopup();
         
-        // Fetch nearby hospitals
         fetchNearbyHospitals(lat, lng);
     }
     
@@ -1420,21 +1415,18 @@
             const data = await response.json();
             
             if (data.hospitals && data.hospitals.length > 0) {
-                // Add hospital markers
                 data.hospitals.forEach(hospital => {
-                    const marker = L.marker([hospital.lat, hospital.lon]).addTo(map);
-                    
-                    marker.bindPopup(`
-                        <b>${hospital.name}</b><br>
-                        📍 ${hospital.distance} km away<br>
-                        ${hospital.address ? '📍 ' + hospital.address + '<br>' : ''}
-                        ${hospital.phone ? '📞 ' + hospital.phone + '<br>' : ''}
-                        <a href="https://www.openstreetmap.org/directions?from=${lat},${lng}&to=${hospital.lat},${hospital.lon}" 
-                           target="_blank" style="color: #4AA3DF;">🚗 Get Directions</a>
-                    `);
+                    L.marker([hospital.lat, hospital.lon]).addTo(map)
+                        .bindPopup(`
+                            <b>${hospital.name}</b><br>
+                            📍 ${hospital.distance} km away<br>
+                            ${hospital.address ? '📍 ' + hospital.address + '<br>' : ''}
+                            ${hospital.phone ? '📞 ' + hospital.phone + '<br>' : ''}
+                            <a href="https://www.openstreetmap.org/directions?from=${lat},${lng}&to=${hospital.lat},${hospital.lon}" 
+                               target="_blank" style="color: #4AA3DF;">🚗 Get Directions</a>
+                        `);
                 });
                 
-                // Create hospital list message
                 let hospitalList = '\n\n**Nearby Medical Facilities:**\n';
                 data.hospitals.slice(0, 5).forEach(h => {
                     hospitalList += `\n• **${h.name}** - ${h.distance} km away`;
@@ -1442,7 +1434,6 @@
                 
                 addMessage(`🏥 Found ${data.hospitals.length} medical facilities near you.${hospitalList}`, false);
                 
-                // Add to map bounds
                 const bounds = [[lat, lng]];
                 data.hospitals.slice(0, 5).forEach(h => {
                     bounds.push([h.lat, h.lon]);
@@ -1476,10 +1467,10 @@
     }
     
     // ═══════════════════════════════════════════════════════════════════════
-    // FEEDBACK (Version 1 logic preserved)
+    // FEEDBACK
     // ═══════════════════════════════════════════════════════════════════════
     async function submitFeedback(rating) {
-        const feedbackText = document.getElementById('feedback-text').value;
+        const feedbackText = document.getElementById('feedback-textarea').value;
         
         try {
             const response = await fetch('/submit-feedback/', {
@@ -1509,11 +1500,11 @@
     
     function closeFeedback() {
         document.getElementById('feedback-modal').style.display = 'none';
-        document.getElementById('feedback-text').value = '';
+        document.getElementById('feedback-textarea').value = '';
     }
     
     // ═══════════════════════════════════════════════════════════════════════
-    // CHAT HISTORY MANAGEMENT (Version 1 logic preserved)
+    // CHAT HISTORY MANAGEMENT
     // ═══════════════════════════════════════════════════════════════════════
     function clearChatHistory() {
         if (confirm('Clear all chat history?')) {
@@ -1547,7 +1538,6 @@ I can help you understand symptoms and provide first aid guidance for diseases c
             const key = localStorage.key(i);
             if (key && key.startsWith('chat_history_')) {
                 const sessionKey = key.replace('chat_history_', '');
-                // Simple cleanup based on age - check if session has timestamp
                 const timestamp = parseInt(sessionKey.split('_')[1]);
                 if (timestamp && timestamp < oneWeekAgo) {
                     localStorage.removeItem(key);
@@ -1574,23 +1564,24 @@ I can help you understand symptoms and provide first aid guidance for diseases c
     // ═══════════════════════════════════════════════════════════════════════
     const textarea = document.getElementById('user-input');
     
-    textarea.addEventListener('input', function() {
-        this.style.height = 'auto';
-        this.style.height = Math.min(this.scrollHeight, 120) + 'px';
-    });
-    
-    textarea.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-        }
-    });
+    if (textarea) {
+        textarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+        
+        textarea.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+    }
     
     // ═══════════════════════════════════════════════════════════════════════
     // INITIALIZATION
     // ═══════════════════════════════════════════════════════════════════════
     window.addEventListener('DOMContentLoaded', function() {
-        // Load message history
         const history = localStorage.getItem('chat_history_' + sessionId);
         if (history) {
             const messages = JSON.parse(history);
@@ -1603,7 +1594,6 @@ I can help you understand symptoms and provide first aid guidance for diseases c
             showWelcomeMessage();
         }
         
-        // Run cleanup on load
         clearOldHistory();
     });
 </script>
