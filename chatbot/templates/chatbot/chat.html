@@ -5,8 +5,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Self-Diagnosis Medical Chatbot</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         * {
             margin: 0;
@@ -58,14 +56,37 @@
             opacity: 0.95;
             font-weight: 300;
         }
+
+        .header-meta {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
         
         .chat-header .user-badge {
             background: rgba(255,255,255,0.2);
             padding: 5px 15px;
             border-radius: 20px;
             display: inline-block;
-            margin-top: 10px;
             font-size: 0.8rem;
+        }
+
+        .new-session-btn {
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.5);
+            color: white;
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .new-session-btn:hover {
+            background: rgba(255,255,255,0.3);
         }
         
         .messages-container {
@@ -142,14 +163,89 @@
             50% { opacity: 0.7; }
             100% { opacity: 1; }
         }
-        
-        .emergency-map {
-            height: 350px;
-            margin: 15px 0;
-            border-radius: 15px;
+
+        /* ── Emergency Map Panel (Google Maps embed) ── */
+        .emergency-map-panel {
             display: none;
-            border: 3px solid #87CEEB;
-            box-shadow: 0 5px 15px rgba(135, 206, 235, 0.3);
+            flex-direction: column;
+            background: #fff;
+            border-top: 3px solid #FF6B6B;
+            border-bottom: 3px solid #87CEEB;
+        }
+
+        .emergency-map-header {
+            background: linear-gradient(135deg, #FF6B6B, #ff8f8f);
+            color: white;
+            padding: 10px 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .emergency-map-header h3 {
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .emergency-map-header .tag-row {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+
+        .location-tag {
+            background: rgba(255,255,255,0.2);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.72rem;
+        }
+
+        .close-map-btn {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.5);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            margin-left: 10px;
+        }
+
+        .close-map-btn:hover {
+            background: rgba(255,255,255,0.35);
+        }
+
+        .emergency-map-panel iframe {
+            width: 100%;
+            height: 300px;
+            border: none;
+        }
+
+        .emergency-map-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 14px;
+            background: #f8fcff;
+            font-size: 0.75rem;
+            color: #7F8C8D;
+        }
+
+        .open-maps-btn {
+            background: linear-gradient(135deg, #4AA3DF, #6EC8E8);
+            color: white;
+            text-decoration: none;
+            padding: 6px 14px;
+            border-radius: 15px;
+            font-size: 0.78rem;
+            font-weight: 500;
+            transition: opacity 0.2s;
+        }
+
+        .open-maps-btn:hover {
+            opacity: 0.85;
         }
         
         .input-container {
@@ -206,40 +302,6 @@
         
         #send-button:active {
             transform: scale(0.95);
-        }
-        
-        .hospital-list {
-            margin-top: 15px;
-            background: white;
-            border-radius: 15px;
-            padding: 15px;
-            border: 2px solid #E0F0FF;
-        }
-        
-        .hospital-item {
-            padding: 12px;
-            border-bottom: 1px solid #E0F0FF;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .hospital-item:last-child {
-            border-bottom: none;
-        }
-        
-        .hospital-name {
-            font-weight: 600;
-            color: #2C3E50;
-        }
-        
-        .hospital-distance {
-            background: #E8F4FF;
-            padding: 4px 10px;
-            border-radius: 15px;
-            color: #4AA3DF;
-            font-size: 0.85rem;
-            font-weight: 500;
         }
         
         .typing-indicator {
@@ -318,20 +380,9 @@
             transform: translateY(-2px);
         }
         
-        .feedback-btn[data-rating="5"] {
-            background: #4CAF50;
-            color: white;
-        }
-        
-        .feedback-btn[data-rating="3"] {
-            background: #FFC107;
-            color: #2C3E50;
-        }
-        
-        .feedback-btn[data-rating="1"] {
-            background: #F44336;
-            color: white;
-        }
+        .feedback-btn[data-rating="5"] { background: #4CAF50; color: white; }
+        .feedback-btn[data-rating="3"] { background: #FFC107; color: #2C3E50; }
+        .feedback-btn[data-rating="1"] { background: #F44336; color: white; }
         
         #feedback-text {
             width: 100%;
@@ -364,24 +415,79 @@
             background: #4AA3DF;
             color: white;
         }
+
+        /* Session confirm overlay */
+        #session-confirm {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #session-confirm.active {
+            display: flex;
+        }
+
+        .session-confirm-box {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 360px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+
+        .session-confirm-box h3 {
+            color: #2C3E50;
+            margin-bottom: 10px;
+            font-size: 1.15rem;
+        }
+
+        .session-confirm-box p {
+            color: #7F8C8D;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+        }
+
+        .session-confirm-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .session-confirm-actions button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .btn-confirm-new {
+            background: linear-gradient(135deg, #FF6B6B, #ff8f8f);
+            color: white;
+        }
+
+        .btn-confirm-new:hover { opacity: 0.88; }
+
+        .btn-cancel-new {
+            background: #E8F4FF;
+            color: #4AA3DF;
+        }
+
+        .btn-cancel-new:hover { background: #4AA3DF; color: white; }
         
         /* Scrollbar Styling */
-        .messages-container::-webkit-scrollbar {
-            width: 6px;
-        }
-        
-        .messages-container::-webkit-scrollbar-track {
-            background: #E8F4FF;
-        }
-        
-        .messages-container::-webkit-scrollbar-thumb {
-            background: #4AA3DF;
-            border-radius: 3px;
-        }
-        
-        .messages-container::-webkit-scrollbar-thumb:hover {
-            background: #2C82B9;
-        }
+        .messages-container::-webkit-scrollbar { width: 6px; }
+        .messages-container::-webkit-scrollbar-track { background: #E8F4FF; }
+        .messages-container::-webkit-scrollbar-thumb { background: #4AA3DF; border-radius: 3px; }
+        .messages-container::-webkit-scrollbar-thumb:hover { background: #2C82B9; }
         
         /* Quick Actions */
         .quick-actions {
@@ -409,32 +515,13 @@
             color: white;
         }
         
-        /* Welcome Message */
-        .welcome-message {
-            text-align: center;
-            margin-bottom: 20px;
-        }
+        .welcome-message { text-align: center; margin-bottom: 20px; }
+        .welcome-icon { font-size: 3rem; margin-bottom: 10px; }
         
-        .welcome-icon {
-            font-size: 3rem;
-            margin-bottom: 10px;
-        }
-        
-        /* Responsive Design */
         @media (max-width: 1300px) {
-            body {
-                padding: 10px;
-            }
-            
-            .chat-container {
-                height: 90vh;
-            }
-            
-            #feedback-modal {
-                left: 20px;
-                right: 20px;
-                max-width: none;
-            }
+            body { padding: 10px; }
+            .chat-container { height: 90vh; }
+            #feedback-modal { left: 20px; right: 20px; max-width: none; }
         }
     </style>
 </head>
@@ -442,9 +529,12 @@
     <div class="chat-container">
         <div class="chat-header">
             <h1>SELF-DIAGNOSIS MEDICAL CHATBOT</h1>
-            <p>Your 24/7 First Aid Guide for Common Diseases| Emergency Detection</p>
-            <div class="user-badge" id="user-badge">
-                Session: <span id="session-id-display">Loading...</span>
+            <p>Your 24/7 First Aid Guide for Common Diseases | Emergency Detection</p>
+            <div class="header-meta">
+                <div class="user-badge" id="user-badge">
+                    Session: <span id="session-id-display">Loading...</span>
+                </div>
+                <button class="new-session-btn" onclick="promptNewSession()">🔄 New Session</button>
             </div>
         </div>
         
@@ -473,8 +563,39 @@
             <button class="quick-action-btn" onclick="setQuickMessage('Stomach ache and vomiting')">🤢 Stomach + Vomiting</button>
             <button class="quick-action-btn" onclick="setQuickMessage('Snake bite emergency')">🐍 Snake Bite</button>
         </div>
-        
-        <div id="emergency-map" class="emergency-map"></div>
+
+        <!-- ── Emergency Map Panel (Murang'a Hospitals – Google Maps) ── -->
+        <div class="emergency-map-panel" id="emergency-map-panel">
+            <div class="emergency-map-header">
+                <div>
+                    <h3>🏥 Hospitals &amp; Clinics in Murang'a — Nearest Facilities</h3>
+                    <div class="tag-row">
+                        <span class="location-tag">📍 Murang'a Town</span>
+                        <span class="location-tag">📍 Kangema</span>
+                        <span class="location-tag">📍 Kigumo</span>
+                        <span class="location-tag">📍 Maragua</span>
+                        <span class="location-tag">📍 Kirinyaga Road</span>
+                    </div>
+                </div>
+                <button class="close-map-btn" onclick="closeEmergencyMap()">✕ Close</button>
+            </div>
+            <iframe
+                src="https://www.google.com/maps/embed?pb=!1m16!1m12!1m3!1d15958.015961340478!2d37.1604758996418!3d-0.7192118647068063!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!2m1!1sMurang%27a%20hospitals!5e0!3m2!1sen!2ske!4v1775058909313!5m2!1sen!2ske"
+                title="Hospitals and clinics in Murang'a County, Kenya"
+                allowfullscreen
+                loading="lazy"
+                referrerpolicy="no-referrer-when-downgrade"
+            ></iframe>
+            <div class="emergency-map-footer">
+                <span>Map data © Google · Murang'a County hospitals &amp; clinics</span>
+                <a
+                    href="https://www.google.com/maps/search/Murang'a+hospitals/@-0.7192118,37.1604759,14z"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="open-maps-btn"
+                >🗺 Open in Google Maps</a>
+            </div>
+        </div>
         
         <div class="input-container">
             <input type="text" id="user-input" placeholder="Type your symptoms here..." autocomplete="off">
@@ -494,135 +615,271 @@
         <button class="close-btn" onclick="closeFeedback()">Close</button>
     </div>
 
+    <!-- New Session Confirmation Overlay -->
+    <div id="session-confirm">
+        <div class="session-confirm-box">
+            <h3>Start a New Session?</h3>
+            <p>This will clear your current chat history and create a fresh session. The current session data will be removed.</p>
+            <div class="session-confirm-actions">
+                <button class="btn-confirm-new" onclick="confirmNewSession()">✓ Yes, New Session</button>
+                <button class="btn-cancel-new" onclick="cancelNewSession()">✕ Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // Generate or retrieve session ID
-        let sessionId = localStorage.getItem('chat_session_id');
-        if (!sessionId) {
-            sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-            localStorage.setItem('chat_session_id', sessionId);
+        // ── Session Management ──────────────────────────────────────────────
+        // SESSION_TTL: sessions expire after 30 minutes of inactivity.
+        const SESSION_TTL_MS = 30 * 60 * 1000;
+        const SESSION_KEY    = 'chat_session_id';
+        const SESSION_META   = 'chat_session_meta';
+        const MAX_HISTORY    = 50;
+
+        /**
+         * Generate a fresh session ID and store creation time + last-active time.
+         * Wipes any previous history for the old session.
+         */
+        function createNewSession() {
+            // Clean up old session history first
+            const oldId = localStorage.getItem(SESSION_KEY);
+            if (oldId) {
+                localStorage.removeItem('chat_history_' + oldId);
+            }
+
+            const newId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            const now   = Date.now();
+            localStorage.setItem(SESSION_KEY, newId);
+            localStorage.setItem(SESSION_META, JSON.stringify({
+                createdAt:    now,
+                lastActiveAt: now
+            }));
+
+            // Also purge any orphan history keys older than 7 days
+            purgeOldHistoryKeys();
+
+            return newId;
         }
-        
-        // Display session ID
+
+        /**
+         * Check whether the stored session is still valid (not expired).
+         * If expired, create a new one and return it.
+         */
+        function resolveSession() {
+            const storedId   = localStorage.getItem(SESSION_KEY);
+            const storedMeta = localStorage.getItem(SESSION_META);
+
+            if (!storedId || !storedMeta) {
+                return createNewSession();
+            }
+
+            try {
+                const meta = JSON.parse(storedMeta);
+                const now  = Date.now();
+                if ((now - meta.lastActiveAt) > SESSION_TTL_MS) {
+                    // Session expired — start fresh automatically
+                    return createNewSession();
+                }
+                // Still valid — bump last-active timestamp
+                meta.lastActiveAt = now;
+                localStorage.setItem(SESSION_META, JSON.stringify(meta));
+                return storedId;
+            } catch (_) {
+                return createNewSession();
+            }
+        }
+
+        /** Touch (update) last-active timestamp on every user interaction. */
+        function touchSession() {
+            const storedMeta = localStorage.getItem(SESSION_META);
+            if (!storedMeta) return;
+            try {
+                const meta = JSON.parse(storedMeta);
+                meta.lastActiveAt = Date.now();
+                localStorage.setItem(SESSION_META, JSON.stringify(meta));
+            } catch (_) { /* ignore */ }
+        }
+
+        /** Remove history keys for sessions older than 7 days. */
+        function purgeOldHistoryKeys() {
+            const cutoff = Date.now() - (7 * 24 * 60 * 60 * 1000);
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('chat_history_session_')) {
+                    // Extract timestamp portion: chat_history_session_<timestamp>_<rand>
+                    const parts     = key.split('_');
+                    const timestamp = parseInt(parts[3], 10); // index 3 = timestamp
+                    if (!isNaN(timestamp) && timestamp < cutoff) {
+                        keysToRemove.push(key);
+                    }
+                }
+            }
+            keysToRemove.forEach(k => localStorage.removeItem(k));
+        }
+
+        // Initialise session
+        let sessionId = resolveSession();
         document.getElementById('session-id-display').textContent = sessionId.substr(0, 8) + '...';
-        
-        let map;
-        let userMarker;
-        let isWaitingForResponse = false;
-        let currentEmergencyId = null;
-        let currentDisease = '';
-        
-        const messagesContainer = document.getElementById('messages-container');
-        
-        // Load message history from localStorage
+
+        // ── New-session flow ────────────────────────────────────────────────
+        function promptNewSession() {
+            document.getElementById('session-confirm').classList.add('active');
+        }
+
+        function cancelNewSession() {
+            document.getElementById('session-confirm').classList.remove('active');
+        }
+
+        function confirmNewSession() {
+            cancelNewSession();
+            sessionId = createNewSession();
+            document.getElementById('session-id-display').textContent = sessionId.substr(0, 8) + '...';
+
+            // Clear chat UI (keep only the welcome message)
+            const container = document.getElementById('messages-container');
+            container.innerHTML = `
+                <div class="message bot">
+                    <div class="message-content">
+                        <div class="welcome-message">
+                            <div class="welcome-icon">👋</div>
+                            <strong>Karibu! Welcome!</strong>
+                        </div>
+                        I'm your Kenya Medical Assistant. Describe your symptoms and I'll provide first aid guidance.<br><br>
+                        <span style="color: #4AA3DF;">Try saying:</span><br>
+                        • "I have fever and headache"<br>
+                        • "Cough and difficulty breathing"<br>
+                        • "Stomach ache and vomiting"<br><br>
+                        <span style="color: #FF6B6B;">⚠️ For emergencies, use words like:</span><br>
+                        • "unconscious" • "snake bite" • "severe bleeding" • "heart attack"
+                    </div>
+                    <div class="message-time">Just now</div>
+                </div>`;
+
+            // Close emergency map if open
+            closeEmergencyMap();
+            closeFeedback();
+            currentEmergencyId = null;
+            currentDisease = '';
+        }
+
+        // ── Message History ─────────────────────────────────────────────────
         function loadMessageHistory() {
             const history = localStorage.getItem('chat_history_' + sessionId);
-            if (history) {
+            if (!history) return;
+            try {
                 const messages = JSON.parse(history);
-                messages.forEach(msg => {
-                    addMessage(msg.text, msg.isUser, msg.isEmergency, false);
-                });
-            }
+                messages.forEach(msg => addMessage(msg.text, msg.isUser, msg.isEmergency, false));
+            } catch (_) { /* corrupted history — ignore */ }
         }
-        
-        // Save message to history
+
         function saveMessageToHistory(text, isUser, isEmergency) {
+            touchSession();
             const historyKey = 'chat_history_' + sessionId;
-            let history = localStorage.getItem(historyKey);
-            history = history ? JSON.parse(history) : [];
-            
-            history.push({
-                text: text,
-                isUser: isUser,
-                isEmergency: isEmergency,
-                timestamp: new Date().toISOString()
-            });
-            
-            // Keep only last 50 messages
-            if (history.length > 50) {
-                history = history.slice(-50);
+            let history = [];
+            try {
+                history = JSON.parse(localStorage.getItem(historyKey) || '[]');
+            } catch (_) { history = []; }
+
+            history.push({ text, isUser, isEmergency, timestamp: new Date().toISOString() });
+
+            if (history.length > MAX_HISTORY) {
+                history = history.slice(-MAX_HISTORY);
             }
-            
+
             localStorage.setItem(historyKey, JSON.stringify(history));
         }
-        
+
+        // ── UI helpers ──────────────────────────────────────────────────────
+        let isWaitingForResponse = false;
+        let currentEmergencyId   = null;
+        let currentDisease       = '';
+
+        const messagesContainer = document.getElementById('messages-container');
+
         function addMessage(text, isUser, isEmergency = false, saveToHistory = true) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
-            
+
             if (isEmergency && !isUser) {
-                const emergencyBadge = document.createElement('div');
-                emergencyBadge.className = 'emergency-badge';
-                emergencyBadge.textContent = '🚨 EMERGENCY DETECTED';
-                messageDiv.appendChild(emergencyBadge);
+                const badge = document.createElement('div');
+                badge.className = 'emergency-badge';
+                badge.textContent = '🚨 EMERGENCY DETECTED';
+                messageDiv.appendChild(badge);
             }
-            
+
             const contentDiv = document.createElement('div');
             contentDiv.className = 'message-content';
-            
-            // Convert markdown-style formatting to HTML
+
             let formattedText = text
                 .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                 .replace(/\*(.*?)\*/g, '<em>$1</em>')
                 .replace(/•/g, '<br>•')
                 .replace(/\n/g, '<br>');
-            
+
             contentDiv.innerHTML = formattedText;
             messageDiv.appendChild(contentDiv);
-            
+
             const timeDiv = document.createElement('div');
             timeDiv.className = 'message-time';
             timeDiv.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             messageDiv.appendChild(timeDiv);
-            
+
             messagesContainer.appendChild(messageDiv);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            
+
             if (saveToHistory) {
                 saveMessageToHistory(text, isUser, isEmergency);
             }
         }
-        
+
         function showTypingIndicator() {
             const indicator = document.createElement('div');
             indicator.className = 'message bot';
             indicator.id = 'typing-indicator';
             indicator.innerHTML = `
                 <div class="typing-indicator">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </div>
-            `;
+                    <span></span><span></span><span></span>
+                </div>`;
             messagesContainer.appendChild(indicator);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
-        
+
         function removeTypingIndicator() {
             const indicator = document.getElementById('typing-indicator');
-            if (indicator) {
-                indicator.remove();
-            }
+            if (indicator) indicator.remove();
         }
-        
+
         function setQuickMessage(message) {
             document.getElementById('user-input').value = message;
             sendMessage();
         }
-        
+
+        // ── Emergency Map ───────────────────────────────────────────────────
+        function showEmergencyMap() {
+            document.getElementById('emergency-map-panel').style.display = 'flex';
+            // Scroll so the map is visible
+            document.getElementById('emergency-map-panel').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function closeEmergencyMap() {
+            document.getElementById('emergency-map-panel').style.display = 'none';
+        }
+
+        // ── Send message ────────────────────────────────────────────────────
         async function sendMessage() {
-            const input = document.getElementById('user-input');
+            const input   = document.getElementById('user-input');
             const message = input.value.trim();
-            
+
             if (!message || isWaitingForResponse) return;
-            
-            // Add user message
+
+            touchSession(); // keep session alive
+
             addMessage(message, true);
             input.value = '';
-            
-            // Show typing indicator
+
             showTypingIndicator();
             isWaitingForResponse = true;
-            
+
             try {
                 const response = await fetch('/process-message/', {
                     method: 'POST',
@@ -630,29 +887,26 @@
                         'Content-Type': 'application/json',
                         'X-CSRFToken': getCookie('csrftoken')
                     },
-                    body: JSON.stringify({
-                        message: message,
-                        session_id: sessionId
-                    })
+                    body: JSON.stringify({ message, session_id: sessionId })
                 });
-                
+
                 const data = await response.json();
                 removeTypingIndicator();
-                
+
                 if (data.type === 'emergency') {
                     currentEmergencyId = data.emergency_id;
                     addMessage(data.message, false, true);
-                    requestUserLocation();
+                    // Show Murang'a hospitals map immediately — no geolocation needed
+                    addMessage("📍 Showing Murang'a County hospitals & clinics. Click any pin for directions.", false);
+                    showEmergencyMap();
                 } else if (data.type === 'normal') {
                     addMessage(data.message, false);
-                    
-                    // Store disease name for feedback
+
                     const match = data.message.match(/\*\*(.*?)\*\*/);
                     if (match && match[1]) {
                         currentDisease = match[1].replace('Based on your symptoms, you may have ', '');
                     }
-                    
-                    // Show feedback modal after 2 seconds if symptoms were detected
+
                     if (data.symptoms_detected && data.symptoms_detected.length > 0) {
                         setTimeout(() => {
                             document.getElementById('feedback-modal').style.display = 'block';
@@ -661,7 +915,7 @@
                 } else {
                     addMessage('Sorry, I encountered an error. Please try again.', false);
                 }
-                
+
             } catch (error) {
                 removeTypingIndicator();
                 addMessage('Network error. Please check your connection.', false);
@@ -670,117 +924,10 @@
                 isWaitingForResponse = false;
             }
         }
-        
-        function requestUserLocation() {
-            if (navigator.geolocation) {
-                addMessage("📍 Please allow location access to find nearby hospitals...", false);
-                navigator.geolocation.getCurrentPosition(showEmergencyMap, handleLocationError);
-            } else {
-                addMessage("❌ Geolocation is not supported by your browser. Please call emergency services immediately: 911 or 112", false);
-            }
-        }
-        
-        function showEmergencyMap(position) {
-            const lat = position.coords.latitude;
-            const lng = position.coords.longitude;
-            
-            // Show map
-            const mapElement = document.getElementById('emergency-map');
-            mapElement.style.display = 'block';
-            
-            // Initialize map
-            map = L.map('emergency-map').setView([lat, lng], 14);
-            
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(map);
-            
-            // Add user marker
-            userMarker = L.marker([lat, lng]).addTo(map)
-                .bindPopup('You are here')
-                .openPopup();
-            
-            // Fetch nearby hospitals
-            fetchNearbyHospitals(lat, lng);
-        }
-        
-        async function fetchNearbyHospitals(lat, lng) {
-            try {
-                const response = await fetch('/get-nearby-hospitals/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
-                    body: JSON.stringify({
-                        latitude: lat,
-                        longitude: lng,
-                        session_id: sessionId,
-                        emergency_id: currentEmergencyId
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.hospitals && data.hospitals.length > 0) {
-                    // Add hospital markers
-                    data.hospitals.forEach(hospital => {
-                        const marker = L.marker([hospital.lat, hospital.lon]).addTo(map);
-                        
-                        marker.bindPopup(`
-                            <b>${hospital.name}</b><br>
-                            📍 ${hospital.distance} km away<br>
-                            ${hospital.address ? '📍 ' + hospital.address : ''}<br>
-                            ${hospital.phone ? '📞 ' + hospital.phone : ''}<br>
-                            <a href="https://www.openstreetmap.org/directions?from=${lat},${lng}&to=${hospital.lat},${hospital.lon}" 
-                               target="_blank" style="color: #4AA3DF;">🚗 Get Directions</a>
-                        `);
-                    });
-                    
-                    // Create hospital list
-                    let hospitalList = '\n\n**Nearby Medical Facilities:**\n';
-                    data.hospitals.slice(0, 3).forEach(h => {
-                        hospitalList += `\n• **${h.name}** - ${h.distance} km away`;
-                    });
-                    
-                    addMessage(`🏥 Found ${data.hospitals.length} medical facilities near you.${hospitalList}`, false);
-                    
-                    // Add to map bounds
-                    const bounds = [[lat, lng]];
-                    data.hospitals.slice(0, 5).forEach(h => {
-                        bounds.push([h.lat, h.lon]);
-                    });
-                    map.fitBounds(bounds);
-                    
-                } else {
-                    addMessage("❌ No hospitals found nearby. Please call emergency services: 911 or 112", false);
-                }
-                
-            } catch (error) {
-                console.error('Error fetching hospitals:', error);
-                addMessage("⚠️ Error finding hospitals. Please call emergency services immediately.", false);
-            }
-        }
-        
-        function handleLocationError(error) {
-            let message = "⚠️ Location error: ";
-            switch(error.code) {
-                case error.PERMISSION_DENIED:
-                    message += "Please enable location access for emergency help. If this is an emergency, call 911 or 112 immediately.";
-                    break;
-                case error.POSITION_UNAVAILABLE:
-                    message += "Location unavailable. Please call emergency services: 911 or 112";
-                    break;
-                case error.TIMEOUT:
-                    message += "Location request timed out. Please try again or call emergency services.";
-                    break;
-            }
-            addMessage(message, false);
-        }
-        
+
+        // ── Feedback ────────────────────────────────────────────────────────
         async function submitFeedback(rating) {
             const feedbackText = document.getElementById('feedback-text').value;
-            
             try {
                 const response = await fetch('/submit-feedback/', {
                     method: 'POST',
@@ -790,14 +937,13 @@
                     },
                     body: JSON.stringify({
                         session_id: sessionId,
-                        disease: currentDisease,
-                        rating: rating,
-                        feedback: feedbackText
+                        disease:    currentDisease,
+                        rating,
+                        feedback:   feedbackText
                     })
                 });
-                
+
                 const data = await response.json();
-                
                 if (data.status === 'success') {
                     closeFeedback();
                     addMessage("Thank you for your feedback! It helps us improve. 🙏", false);
@@ -806,12 +952,13 @@
                 console.error('Feedback error:', error);
             }
         }
-        
+
         function closeFeedback() {
             document.getElementById('feedback-modal').style.display = 'none';
             document.getElementById('feedback-text').value = '';
         }
-        
+
+        // ── Utilities ───────────────────────────────────────────────────────
         function getCookie(name) {
             let cookieValue = null;
             if (document.cookie && document.cookie !== '') {
@@ -826,35 +973,17 @@
             }
             return cookieValue;
         }
-        
+
         // Enter key to send
-        document.getElementById('user-input').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
+        document.getElementById('user-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') sendMessage();
         });
-        
+
         // Load message history on page load
-        window.addEventListener('load', function() {
+        window.addEventListener('load', function () {
             loadMessageHistory();
+            purgeOldHistoryKeys();
         });
-        
-        // Clear old chat history (older than 7 days)
-        function clearOldHistory() {
-            const oneWeekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key && key.startsWith('chat_history_')) {
-                    const timestamp = parseInt(key.split('_')[2]);
-                    if (timestamp && timestamp < oneWeekAgo) {
-                        localStorage.removeItem(key);
-                    }
-                }
-            }
-        }
-        
-        // Run cleanup on load
-        clearOldHistory();
     </script>
 </body>
 </html>
