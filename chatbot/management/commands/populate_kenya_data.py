@@ -3,6 +3,15 @@ from django.db import transaction
 from chatbot.models import Disease, Symptom, FirstAidProcedure, EmergencyKeyword
 
 class Command(BaseCommand):
+    """
+    Populates the database with Kenya-specific medical data including:
+    - Common tropical diseases (malaria, cholera, typhoid)
+    - First aid procedures contextualized for Kenyan healthcare settings
+    - Emergency keywords with appropriate severity levels
+    
+    Run with: python manage.py populate_kenya_data
+    Use --force to skip confirmation prompt
+    """
     help = 'Populate database with Kenyan medical data'
 
     def add_arguments(self, parser):
