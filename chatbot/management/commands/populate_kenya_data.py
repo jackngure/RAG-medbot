@@ -409,26 +409,6 @@ FIRST_AID_CATALOGUE: List[FirstAidSpec] = [
         ),
     ),
     FirstAidSpec(
-        disease_key="upper_respiratory_infection",
-        title="Cold / Flu – First Aid",
-        steps=(
-            "1. REST: Stay at home and rest.\n\n"
-            "2. WARM FLUIDS: Drink warm tea with lemon or honey, soup, or plain water regularly.\n\n"
-            "3. STEAM INHALATION: Inhale steam from a bowl of hot water to help relieve a blocked nose.\n\n"
-            "4. SALT-WATER GARGLE: Gargle with warm salt water to soothe a sore throat.\n\n"
-            "5. FEVER CONTROL: Take paracetamol for fever or body aches.\n\n"
-            "6. RESPIRATORY HYGIENE: Cough into your elbow; wash hands frequently to prevent spreading."
-        ),
-        warning_notes="Colds and flu spread easily. Avoid close contact with vulnerable individuals (elderly, infants, pregnant women).",
-        when_to_seek_help=(
-            f"Go to hospital if:\n"
-            "- Difficulty breathing\n"
-            "- Chest pain\n"
-            "- Fever lasting more than 3 days\n"
-            "- Child is breathing fast or refusing to drink"
-        ),
-    ),
-    FirstAidSpec(
         disease_key="skin_infection",
         title="Skin Infection – First Aid",
         steps=(
