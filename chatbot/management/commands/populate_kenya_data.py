@@ -31,7 +31,7 @@ class Command(BaseCommand):
         except Exception as e:
             raise CommandError(f'Population failed: {e}')
 
-        self.stdout.write(self.style.SUCCESS('✅ Kenyan medical data populated successfully!'))
+        self.stdout.write(self.style.SUCCESS('Kenyan medical data populated successfully!'))
         self.stdout.write(f'   • {Disease.objects.count()} diseases added')
         self.stdout.write(f'   • {Symptom.objects.count()} symptoms added')
         self.stdout.write(f'   • {FirstAidProcedure.objects.count()} first aid procedures added')
@@ -98,10 +98,6 @@ class Command(BaseCommand):
                        'Bacterial infection from eating food or drinking water contaminated with feces. Common where there is poor sanitation. Causes long fever that doesn\'t go away.',
                        'fever, headache, fatigue, stomach pain, diarrhea, loss of appetite'),
             
-            'chikungunya': ('Chikungunya', 
-                           'Viral disease spread by mosquitoes. Causes severe joint pain that can last months. Also called "bending fever" because pain makes you bend.',
-                           'fever, joint pain, headache, rash, fatigue, muscle pain'),
-            
             'cholera': ('Cholera', 
                        'Severe diarrheal disease from contaminated water. Causes rapid water loss from body. Can kill within hours if not treated. Common after floods.',
                        'severe diarrhea (rice-water stool), vomiting, dehydration, abdominal pain'),
@@ -109,10 +105,7 @@ class Command(BaseCommand):
             'dengue': ('Dengue', 
                       'Viral infection spread by daytime mosquitoes. Also called "break-bone fever" because of severe pain. Dangerous because can cause bleeding.',
                       'fever, severe headache, joint and muscle pain, rash, pain behind eyes'),
-            
-            'rift_valley_fever': ('Rift Valley Fever', 
-                                 'Viral disease common in livestock areas. Spread by mosquitoes or contact with sick animals. Affects farmers and livestock keepers.',
-                                 'fever, muscle pain, weakness, dizziness, back pain'),
+        
             
             'meningitis': ('Meningitis', 
                           'Inflammation of the covering of brain and spinal cord. Medical emergency. Can cause death or brain damage within hours.',
@@ -168,11 +161,6 @@ class Command(BaseCommand):
             symptoms['vomiting']
         )
         
-        diseases['chikungunya'].symptoms.add(
-            symptoms['fever'], symptoms['headache'], symptoms['fatigue'],
-            symptoms['joint_pain'], symptoms['rash'], symptoms['muscle_pain']
-        )
-        
         diseases['cholera'].symptoms.add(
             symptoms['diarrhea'], symptoms['vomiting'], symptoms['dehydration'],
             symptoms['abdominal_pain'], symptoms['fatigue']
@@ -181,11 +169,6 @@ class Command(BaseCommand):
         diseases['dengue'].symptoms.add(
             symptoms['fever'], symptoms['headache'], symptoms['joint_pain'],
             symptoms['muscle_pain'], symptoms['rash'], symptoms['vomiting']
-        )
-        
-        diseases['rift_valley_fever'].symptoms.add(
-            symptoms['fever'], symptoms['muscle_pain'], symptoms['fatigue'],
-            symptoms['headache'], symptoms['dizziness']
         )
         
         diseases['meningitis'].symptoms.add(
@@ -275,21 +258,6 @@ class Command(BaseCommand):
              '• Severe diarrhea or blood in stool\n'
              '• Constant vomiting, can\'t keep water down\n'
              '• Severe stomach pain'),
-            
-            (diseases['chikungunya'], 'Chikungunya First Aid',
-             '1. REST: Joints hurt because of the virus. Rest as much as possible.\n\n'
-             '2. PAIN RELIEF: Use paracetamol for pain and fever. Avoid ibuprofen or aspirin.\n\n'
-             '3. COLD COMPRESS: Use cold water on painful joints.\n\n'
-             '4. DRINKS: Drink plenty of fluids to stay hydrated.\n\n'
-             '5. MOSQUITO NET: Sleep under net to prevent spreading to family.',
-             
-             'Joint pain may persist for weeks or months.',
-             
-             'Go to hospital if:\n'
-             '• Severe headache that doesn\'t go away\n'
-             '• Vomiting constantly\n'
-             '• Symptoms get worse after fever goes down\n'
-             '• Bleeding from nose or gums'),
             
             (diseases['cholera'], 'Cholera First Aid',
              '1. ORS IMMEDIATELY: Mix oral rehydration salts with clean water. If no ORS, mix: 1 liter clean water + 6 teaspoons sugar + ½ teaspoon salt.\n\n'
