@@ -925,9 +925,21 @@
             }
         }
 
-        // ── Feedback ────────────────────────────────────────────────────────
+        
+        // ── Feedback Submission ──────────────────────────────────────────────
         async function submitFeedback(rating) {
             const feedbackText = document.getElementById('feedback-text').value;
+        
+        // Validate that we have a disease to give feedback about
+            if (!currentDisease) {
+                console.error('No disease to submit feedback for');
+                closeFeedback();
+                addMessage("Thank you for your interest in providing feedback! 🙏", false);
+                return;
+            }
+        
+            console.log('Submitting feedback for disease:', currentDisease, 'Rating:', rating);
+            
             try {
                 const response = await fetch('/submit-feedback/', {
                     method: 'POST',
@@ -938,24 +950,43 @@
                     body: JSON.stringify({
                         session_id: sessionId,
                         disease:    currentDisease,
-                        rating,
+                        rating:     rating,
                         feedback:   feedbackText
                     })
                 });
-
+    
                 const data = await response.json();
                 if (data.status === 'success') {
                     closeFeedback();
-                    addMessage("Thank you for your feedback! It helps us improve. 🙏", false);
+                    addMessage("Thank you for your feedback! It helps us improve the quality of medical advice. 🙏", false);
+                    console.log('Feedback submitted successfully for:', currentDisease);
+                } else {
+                    console.error('Feedback submission failed:', data);
+                    addMessage("Thank you for your feedback! (There was an issue saving it, but we appreciate it.)", false);
+                    closeFeedback();
                 }
             } catch (error) {
                 console.error('Feedback error:', error);
+                closeFeedback();
+                addMessage("Thank you for your feedback! We appreciate your input. 🙏", false);
             }
+            
+            // Reset current disease after feedback
+            currentDisease = null;
         }
 
         function closeFeedback() {
-            document.getElementById('feedback-modal').style.display = 'none';
+            const modal = document.getElementById('feedback-modal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
             document.getElementById('feedback-text').value = '';
+            
+            // Clear the timeout if it exists
+            if (feedbackTimeout) {
+                clearTimeout(feedbackTimeout);
+                feedbackTimeout = null;
+            }
         }
 
         // ── Utilities ───────────────────────────────────────────────────────
