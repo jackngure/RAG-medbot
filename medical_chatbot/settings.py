@@ -95,13 +95,14 @@ CACHES = {
 # CORS settings - Restrict to specific origins
 CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:3000').split(',')
 
+# Static files configuration
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
+# Make sure DEBUG is True for development
+DEBUG = True
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-if DEBUG:
-    import mimetypes
-    mimetypes.add_type("text/css", ".css", True)
-    mimetypes.add_type("text/javascript", ".js", True)
+DEBUG = true
