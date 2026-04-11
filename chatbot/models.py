@@ -167,16 +167,41 @@ class FirstAidFeedback(models.Model):
 class ChatAnalytics(models.Model):
     """Aggregated analytics for reporting"""
     date = models.DateField(unique=True)
+    
+    # User metrics
     total_users = models.IntegerField(default=0)
     new_users = models.IntegerField(default=0)
     returning_users = models.IntegerField(default=0)
+    
+    # Message metrics
     total_messages = models.IntegerField(default=0)
+    avg_messages_per_user = models.FloatField(default=0.0)
+    
+    # Emergency metrics
     emergency_detections = models.IntegerField(default=0)
     location_shares = models.IntegerField(default=0)
+    emergency_rate = models.FloatField(default=0.0)
+    
+    # Feedback metrics
     average_rating = models.FloatField(default=0.0)
+    total_feedback = models.IntegerField(default=0)  # Add this
+    rating_distribution = models.JSONField(default=dict)  # Add this
+    
+    # Disease metrics
     top_diseases = models.JSONField(default=dict)
+    
+    # Usage metrics
+    peak_hours = models.JSONField(default=dict)  # Add this
+    
+    # Metadata
+    is_complete = models.BooleanField(default=False)  # Add this
+    error_occurred = models.BooleanField(default=False)  # Add this
+    error_message = models.TextField(blank=True)  # Add this
     
     class Meta:
         indexes = [
             models.Index(fields=['date']),
         ]
+    
+    def __str__(self):
+        return f"Analytics for {self.date}"
