@@ -40,16 +40,32 @@ def _severity_badge(severity):
 
 
 def _star_rating(rating, max_stars=5):
-    """Return filled/empty star HTML for a numeric rating."""
+    """Return appropriate visual for 3-rating system (5=Very Helpful, 3=Okay, 1=Not Helpful)"""
     if rating is None:
         return "—"
-    filled = "★" * round(rating)
-    empty  = "☆" * (max_stars - round(rating))
-    return format_html(
-        '<span style="color:#f59e0b;font-size:14px;">{filled}</span>'
-        '<span style="color:#d1d5db;font-size:14px;">{empty}</span>',
-        filled=filled, empty=empty,
-    )
+    
+    # Map to 3-rating system from chat.html
+    if rating == 5:
+        return format_html(
+            '<span style="color:#4CAF50;font-size:14px;font-weight:600;" title="Very Helpful">👍👍👍</span>'
+        )
+    elif rating == 3:
+        return format_html(
+            '<span style="color:#FF9800;font-size:14px;font-weight:600;" title="Okay">😐😐😐</span>'
+        )
+    elif rating == 1:
+        return format_html(
+            '<span style="color:#F44336;font-size:14px;font-weight:600;" title="Not Helpful">👎👎👎</span>'
+        )
+    else:
+        # Fallback for any other ratings (should not happen with your system)
+        filled = "★" * min(round(rating), max_stars)
+        empty = "☆" * (max_stars - min(round(rating), max_stars))
+        return format_html(
+            '<span style="color:#f59e0b;font-size:14px;">{filled}</span>'
+            '<span style="color:#d1d5db;font-size:14px;">{empty}</span>',
+            filled=filled, empty=empty,
+        )
 
 
 # ─────────────────────────────────────────────
@@ -346,7 +362,7 @@ class EmergencyLogAdmin(admin.ModelAdmin):
 # ─────────────────────────────────────────────
 @admin.register(FirstAidFeedback)
 class FirstAidFeedbackAdmin(admin.ModelAdmin):
-    list_display = ("user_profile", "disease_name", "rating_stars", "feedback_preview", "timestamp")
+    list_display = ("user_profile", "disease_name", "rating_badge", "rating_stars", "feedback_preview", "timestamp")
     list_filter = ("rating", "timestamp")
     search_fields = ("disease_name", "feedback_text")
     ordering = ("-timestamp",)
@@ -354,7 +370,33 @@ class FirstAidFeedbackAdmin(admin.ModelAdmin):
     list_per_page = 30
 
     @admin.display(description="Rating", ordering="rating")
+    def rating_badge(self, obj):
+        """Display rating as a colored badge matching chat.html labels"""
+        if not obj.rating:
+            return "—"
+        
+        # Map to 3-rating system from chat.html
+        rating_map = {
+            5: {"label": "Very Helpful", "color": "#4CAF50", "bg": "#E8F5E9", "icon": "👍"},
+            3: {"label": "Okay", "color": "#FF9800", "bg": "#FFF3E0", "icon": "😐"},
+            1: {"label": "Not Helpful", "color": "#F44336", "bg": "#FFEBEE", "icon": "👎"},
+        }
+        
+        info = rating_map.get(obj.rating, {"label": "Unknown", "color": "#9E9E9E", "bg": "#F5F5F5", "icon": "?"})
+        
+        return format_html(
+            '<span style="background:{bg};color:{color};padding:3px 10px;'
+            'border-radius:15px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:4px;">'
+            '<span style="font-size:12px;">{icon}</span> {label}</span>',
+            bg=info["bg"],
+            color=info["color"],
+            icon=info["icon"],
+            label=info["label"]
+        )
+
+    @admin.display(description="Stars", ordering="rating")
     def rating_stars(self, obj):
+        """Display stars matching the 3-rating system"""
         return _star_rating(obj.rating)
 
     @admin.display(description="Feedback")
