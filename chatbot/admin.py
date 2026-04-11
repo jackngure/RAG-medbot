@@ -22,19 +22,37 @@ def _truncate(text, length=60):
 
 
 def _severity_badge(severity):
-    """Return a coloured HTML badge for a severity string."""
+    """Return a coloured HTML badge for a severity string.
+    
+    Emergency levels (CRITICAL, HIGH) - require immediate attention
+    First aid levels (CAUTION, LOW) - routine guidance
+    """
     colours = {
-        "critical": ("#dc2626", "#fee2e2"),
-        "high":     ("#ea580c", "#ffedd5"),
-        "medium":   ("#d97706", "#fef3c7"),
-        "low":      ("#16a34a", "#dcfce7"),
+        # Emergency levels - Critical/High severity (red/orange for urgency)
+        "critical": ("#dc2626", "#fee2e2"),  # Red - Immediate emergency
+        "high":     ("#ea580c", "#ffedd5"),  # Orange - Urgent, seek care within hours
+        
+        # First aid levels - Caution/Low (yellow/green for routine care)
+        "caution":  ("#d97706", "#fef3c7"),  # Yellow - Monitor carefully
+        "low":      ("#16a34a", "#dcfce7"),  # Green - Basic first aid only
+        
+        # Default/fallback
+        "medium":   ("#d97706", "#fef3c7"),  # Default to caution level
     }
+    
     key = (severity or "").lower()
     fg, bg = colours.get(key, ("#6b7280", "#f3f4f6"))
-    label = severity.title() if severity else "—"
+    
+    # Add emergency indicator for critical/high severity
+    if key in ["critical", "high"]:
+        label = f"🚨 {severity.title()}" if severity else "🚨 Emergency"
+    else:
+        label = severity.title() if severity else "—"
+    
     return format_html(
         '<span style="background:{bg};color:{fg};padding:2px 10px;'
-        'border-radius:12px;font-size:11px;font-weight:600;">{label}</span>',
+        'border-radius:12px;font-size:11px;font-weight:600;'
+        'letter-spacing:.5px;">{label}</span>',
         bg=bg, fg=fg, label=label,
     )
 
