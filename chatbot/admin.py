@@ -14,6 +14,373 @@ logger = logging.getLogger(__name__)
 
 
 # ─────────────────────────────────────────────
+#  Admin site customisation with Dark Theme
+# ─────────────────────────────────────────────
+
+# Force dark theme and remove theme toggle
+admin.site.site_header = "🩺 MedChat Administration"
+admin.site.site_title = "MedChat Admin"
+admin.site.index_title = "Dashboard"
+
+# Add custom CSS to enforce dark theme and hide theme toggle
+class DarkThemeAdmin(admin.AdminSite):
+    def each_context(self, request):
+        context = super().each_context(request)
+        context.update({
+            'site_header': '🩺 MedChat Administration',
+            'site_title': 'MedChat Admin',
+            'index_title': 'Dashboard',
+        })
+        return context
+
+# Apply dark theme CSS
+admin.site.index_template = None
+
+# Custom CSS to override Django admin with dark theme
+dark_theme_css = """
+<style>
+    /* Force dark background everywhere */
+    :root {
+        --primary: #3b82f6;
+        --secondary: #1e293b;
+        --accent: #8b5cf6;
+        --primary-fg: #f1f5f9;
+    }
+    
+    /* Hide theme toggle completely */
+    .theme-toggle, 
+    [data-theme-toggle],
+    .theme-toggle-button,
+    button[title*="theme"],
+    .toggle-theme,
+    .dark-mode-toggle,
+    .light-mode-toggle,
+    .auto-mode-toggle,
+    #theme-toggle {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        position: absolute !important;
+        width: 0 !important;
+        height: 0 !important;
+    }
+    
+    /* Remove any theme selector from header */
+    #header .theme-toggle-container,
+    .nav-sidebar .theme-toggle,
+    .theme-toggle-wrapper {
+        display: none !important;
+    }
+    
+    /* Dark theme for body and main containers */
+    body, #container, #content, .dashboard, .module, .main {
+        background-color: #0f172a !important;
+        color: #e2e8f0 !important;
+    }
+    
+    /* Dark header */
+    #header {
+        background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%) !important;
+        color: #f1f5f9 !important;
+        border-bottom: 1px solid #334155 !important;
+    }
+    
+    #branding h1, #branding h1 a:link, #branding h1 a:visited {
+        color: #f1f5f9 !important;
+        font-weight: 600 !important;
+    }
+    
+    /* Dark sidebar */
+    #nav-sidebar, .module caption, .sidebar {
+        background-color: #1e293b !important;
+        color: #cbd5e1 !important;
+    }
+    
+    /* Dark content area */
+    #content-main, #content-related {
+        background-color: #0f172a !important;
+    }
+    
+    /* Dark cards/modules */
+    .module, .module h2, .module caption, .inline-group h2 {
+        background-color: #1e293b !important;
+        color: #f1f5f9 !important;
+        border-radius: 8px !important;
+        border: 1px solid #334155 !important;
+    }
+    
+    .module h2, .module caption, .inline-group h2 {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
+        border-bottom: 1px solid #334155 !important;
+    }
+    
+    /* Dark tables */
+    table, table thead th, table tbody td {
+        background-color: #1e293b !important;
+        color: #e2e8f0 !important;
+        border-color: #334155 !important;
+    }
+    
+    table thead th {
+        background-color: #0f172a !important;
+        color: #94a3b8 !important;
+        font-weight: 600 !important;
+        border-bottom: 2px solid #334155 !important;
+    }
+    
+    table tbody tr:hover td {
+        background-color: #334155 !important;
+    }
+    
+    /* Dark form elements */
+    input, textarea, select, .vTextField, .vLargeTextField, .vDateField, .vTimeField {
+        background-color: #0f172a !important;
+        color: #e2e8f0 !important;
+        border: 1px solid #475569 !important;
+        border-radius: 6px !important;
+    }
+    
+    input:focus, textarea:focus, select:focus {
+        border-color: #3b82f6 !important;
+        outline: none !important;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+    }
+    
+    /* Dark buttons */
+    .button, input[type=submit], input[type=button], .submit-row input, .default {
+        background-color: #3b82f6 !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 6px !important;
+        padding: 8px 16px !important;
+        font-weight: 500 !important;
+    }
+    
+    .button:hover, input[type=submit]:hover, .default:hover {
+        background-color: #2563eb !important;
+        transform: translateY(-1px) !important;
+    }
+    
+    .deletelink {
+        background-color: #dc2626 !important;
+    }
+    
+    .deletelink:hover {
+        background-color: #b91c1c !important;
+    }
+    
+    /* Dark breadcrumbs */
+    div.breadcrumbs {
+        background-color: #1e293b !important;
+        color: #94a3b8 !important;
+        border-bottom: 1px solid #334155 !important;
+    }
+    
+    div.breadcrumbs a {
+        color: #60a5fa !important;
+    }
+    
+    /* Dark pagination */
+    .paginator {
+        background-color: #1e293b !important;
+        color: #94a3b8 !important;
+        border-top: 1px solid #334155 !important;
+    }
+    
+    .paginator a:link, .paginator a:visited {
+        background-color: #334155 !important;
+        color: #e2e8f0 !important;
+    }
+    
+    /* Dark object tools */
+    .object-tools a:link, .object-tools a:visited {
+        background-color: #3b82f6 !important;
+        color: white !important;
+    }
+    
+    /* Dark filter sidebar */
+    #changelist-filter {
+        background-color: #1e293b !important;
+        border-left: 1px solid #334155 !important;
+    }
+    
+    #changelist-filter h3 {
+        background-color: #0f172a !important;
+        color: #94a3b8 !important;
+    }
+    
+    #changelist-filter ul li a {
+        color: #94a3b8 !important;
+    }
+    
+    #changelist-filter ul li.selected a {
+        color: #60a5fa !important;
+        font-weight: bold !important;
+    }
+    
+    /* Dark calendar/time widget */
+    .calendarbox, .clockbox {
+        background-color: #1e293b !important;
+        color: #e2e8f0 !important;
+        border: 1px solid #475569 !important;
+    }
+    
+    .calendar caption {
+        background-color: #0f172a !important;
+        color: #f1f5f9 !important;
+    }
+    
+    .calendar td, .calendar th {
+        background-color: #1e293b !important;
+        color: #e2e8f0 !important;
+    }
+    
+    /* Dark help text */
+    .help, .help-block {
+        color: #94a3b8 !important;
+    }
+    
+    /* Dark errors */
+    .errorlist li {
+        background-color: #450a0a !important;
+        color: #fca5a5 !important;
+        border-left: 4px solid #dc2626 !important;
+    }
+    
+    /* Scrollbar styling */
+    ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: #0f172a;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: #334155;
+        border-radius: 5px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: #475569;
+    }
+    
+    /* Ensure all text is readable */
+    a:link, a:visited {
+        color: #60a5fa !important;
+    }
+    
+    .results {
+        background-color: #1e293b !important;
+    }
+    
+    /* Dark inline formsets */
+    .inline-group .tabular td.original p {
+        color: #94a3b8 !important;
+    }
+    
+    /* Dark fieldset legends */
+    .aligned label {
+        color: #cbd5e1 !important;
+    }
+</style>
+
+<script>
+    // Remove any theme toggle buttons from DOM after page load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Remove theme toggle elements
+        const selectors = [
+            '.theme-toggle',
+            '[data-theme-toggle]',
+            '.theme-toggle-button',
+            '.dark-mode-toggle',
+            '.light-mode-toggle',
+            '.auto-mode-toggle',
+            '#theme-toggle',
+            '.toggle-theme',
+            '[aria-label*="theme"]',
+            'button:contains("Dark")',
+            'button:contains("Light")',
+            'button:contains("Auto")'
+        ];
+        
+        selectors.forEach(selector => {
+            document.querySelectorAll(selector).forEach(el => {
+                if (el) el.remove();
+            });
+        });
+        
+        // Remove any theme-related script elements
+        document.querySelectorAll('script').forEach(script => {
+            if (script.textContent && script.textContent.includes('theme')) {
+                script.remove();
+            }
+        });
+        
+        // Remove any localStorage theme overrides
+        localStorage.removeItem('theme');
+        localStorage.removeItem('django-admin-theme');
+        
+        // Force dark class on body
+        document.body.classList.add('dark-theme');
+        document.body.setAttribute('data-theme', 'dark');
+        
+        // Override any inline styles that might set light theme
+        const style = document.createElement('style');
+        style.textContent = `
+            body, html {
+                background-color: #0f172a !important;
+                color-scheme: dark !important;
+            }
+        `;
+        document.head.appendChild(style);
+    });
+    
+    // Mutation observer to catch dynamically added theme toggles
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            mutation.addedNodes.forEach(function(node) {
+                if (node.nodeType === 1) { // Element node
+                    if (node.classList && (
+                        node.classList.contains('theme-toggle') ||
+                        node.classList.contains('dark-mode-toggle') ||
+                        node.classList.contains('light-mode-toggle')
+                    )) {
+                        node.remove();
+                    }
+                }
+            });
+        });
+    });
+    
+    observer.observe(document.body, { childList: true, subtree: true });
+</script>
+"""
+
+# Inject CSS into admin
+def add_dark_theme(request):
+    from django.utils.safestring import mark_safe
+    return mark_safe(dark_theme_css)
+
+# Monkey patch admin base template
+from django.contrib.admin.templatetags.admin_modify import submit_row
+from django.contrib.admin import AdminSite
+
+# Add the CSS to extrahead
+original_each_context = AdminSite.each_context
+def each_context_with_dark_theme(self, request):
+    context = original_each_context(self, request)
+    if 'extrahead' not in context:
+        context['extrahead'] = ''
+    context['extrahead'] += dark_theme_css
+    return context
+
+AdminSite.each_context = each_context_with_dark_theme
+
+
+# ─────────────────────────────────────────────
 #  Shared helpers
 # ─────────────────────────────────────────────
 
@@ -26,13 +393,13 @@ def _truncate(text, length=60):
 def _severity_badge(severity):
     """Return a coloured HTML badge for a severity string."""
     colours = {
-        "critical": ("#dc2626", "#fee2e2"),
-        "high":     ("#ea580c", "#ffedd5"),
-        "medium":   ("#d97706", "#fef3c7"),
-        "low":      ("#16a34a", "#dcfce7"),
+        "critical": ("#ef4444", "#7f1d1d"),
+        "high":     ("#f97316", "#7c2d12"),
+        "medium":   ("#f59e0b", "#78350f"),
+        "low":      ("#22c55e", "#14532d"),
     }
     key = (severity or "").lower()
-    fg, bg = colours.get(key, ("#6b7280", "#f3f4f6"))
+    fg, bg = colours.get(key, ("#9ca3af", "#374151"))
     label = severity.title() if severity else "—"
     return format_html(
         '<span style="'
@@ -50,19 +417,10 @@ def _star_rating(rating, max_stars=5):
     filled = "★" * round(rating)
     empty  = "☆" * (max_stars - round(rating))
     return format_html(
-        '<span style="color:#f59e0b;font-size:14px;" title="{rating:.2f}">{filled}</span>'
-        '<span style="color:#d1d5db;font-size:14px;">{empty}</span>',
+        '<span style="color:#fbbf24;font-size:14px;" title="{rating:.2f}">{filled}</span>'
+        '<span style="color:#4b5563;font-size:14px;">{empty}</span>',
         rating=rating, filled=filled, empty=empty,
     )
-
-
-# ─────────────────────────────────────────────
-#  Admin site customisation
-# ─────────────────────────────────────────────
-
-admin.site.site_header  = "🩺 MedChat Administration"
-admin.site.site_title   = "MedChat Admin"
-admin.site.index_title  = "Dashboard"
 
 
 # ─────────────────────────────────────────────
@@ -94,7 +452,7 @@ class DiseaseAdmin(admin.ModelAdmin):
             count = obj.symptoms.count()
         except AttributeError:
             count = 0
-        colour = "#2563eb" if count else "#9ca3af"
+        colour = "#3b82f6" if count else "#64748b"
         return format_html(
             '<span style="background:{c};color:#fff;padding:2px 9px;'
             'border-radius:10px;font-size:12px;font-weight:700;">{n}</span>',
@@ -136,7 +494,7 @@ class SymptomAdmin(admin.ModelAdmin):
             diseases = []
         tags = "".join(
             format_html(
-                '<span style="background:#eff6ff;color:#1d4ed8;padding:2px 8px;'
+                '<span style="background:#1e3a5f;color:#93c5fd;padding:2px 8px;'
                 'border-radius:8px;font-size:11px;margin:2px;display:inline-block;">{}</span>',
                 d.name,
             )
@@ -172,7 +530,7 @@ class FirstAidProcedureAdmin(admin.ModelAdmin):
     def disease_link(self, obj):
         if obj.disease:
             return format_html(
-                '<a style="color:#2563eb;font-weight:600;" href="{}">{}</a>',
+                '<a style="color:#60a5fa;font-weight:600;" href="{}">{}</a>',
                 f"../disease/{obj.disease.pk}/change/",
                 obj.disease.name,
             )
@@ -248,7 +606,7 @@ class ChatSessionAdmin(admin.ModelAdmin):
     def session_id_short(self, obj):
         sid = str(obj.session_id) if obj.session_id else ""
         return format_html(
-            '<code style="font-size:12px;background:#f1f5f9;padding:2px 6px;border-radius:4px;">{}</code>',
+            '<code style="font-size:12px;background:#334155;padding:2px 6px;border-radius:4px;color:#e2e8f0;">{}</code>',
             sid[:12] + "…" if len(sid) > 12 else sid,
         )
 
@@ -259,7 +617,7 @@ class ChatSessionAdmin(admin.ModelAdmin):
         except AttributeError:
             count = 0
         return format_html(
-            '<strong style="color:#374151;">{}</strong>', count
+            '<strong style="color:#e2e8f0;">{}</strong>', count
         )
 
     @admin.display(description="Duration")
@@ -292,19 +650,19 @@ class ChatMessageAdmin(admin.ModelAdmin):
     def session_link(self, obj):
         sid = str(obj.session.session_id)[:8] if obj.session else "—"
         return format_html(
-            '<code style="font-size:11px;background:#f1f5f9;padding:2px 6px;border-radius:4px;">{}</code>',
+            '<code style="font-size:11px;background:#334155;padding:2px 6px;border-radius:4px;color:#e2e8f0;">{}</code>',
             sid + "…",
         )
 
     @admin.display(description="Role", ordering="role")
     def role_badge(self, obj):
         colours = {
-            "user":      ("#7c3aed", "#f5f3ff"),
-            "assistant": ("#059669", "#ecfdf5"),
-            "system":    ("#0284c7", "#e0f2fe"),
+            "user":      ("#a78bfa", "#2e1065"),
+            "assistant": ("#34d399", "#064e3b"),
+            "system":    ("#38bdf8", "#082f49"),
         }
         key = (obj.role or "").lower()
-        fg, bg = colours.get(key, ("#374151", "#f3f4f6"))
+        fg, bg = colours.get(key, ("#94a3b8", "#374151"))
         return format_html(
             '<span style="background:{bg};color:{fg};padding:2px 10px;'
             'border-radius:12px;font-size:11px;font-weight:600;">{role}</span>',
@@ -319,9 +677,9 @@ class ChatMessageAdmin(admin.ModelAdmin):
     def emergency_flag(self, obj):
         if obj.emergency_detected:
             return format_html(
-                '<span style="color:#dc2626;font-size:16px;" title="Emergency detected">🚨</span>'
+                '<span style="color:#ef4444;font-size:16px;" title="Emergency detected">🚨</span>'
             )
-        return format_html('<span style="color:#d1d5db;">—</span>')
+        return format_html('<span style="color:#4b5563;">—</span>')
 
 
 # ─────────────────────────────────────────────
@@ -355,7 +713,7 @@ class UserProfileAdmin(admin.ModelAdmin):
     def session_id_short(self, obj):
         sid = str(obj.session_id) if obj.session_id else ""
         return format_html(
-            '<code style="font-size:12px;background:#f1f5f9;padding:2px 6px;border-radius:4px;">{}</code>',
+            '<code style="font-size:12px;background:#334155;padding:2px 6px;border-radius:4px;color:#e2e8f0;">{}</code>',
             sid[:10] + "…" if len(sid) > 10 else sid,
         )
 
@@ -384,7 +742,7 @@ class SymptomLogAdmin(admin.ModelAdmin):
 
         tags = "".join(
             format_html(
-                '<span style="background:#f0fdf4;color:#166534;padding:2px 7px;'
+                '<span style="background:#064e3b;color:#6ee7b7;padding:2px 7px;'
                 'border-radius:8px;font-size:11px;margin:2px;display:inline-block;">{}</span>',
                 s.name if hasattr(s, "name") else str(s),
             )
@@ -407,7 +765,7 @@ class SymptomLogAdmin(admin.ModelAdmin):
                     count = len(matched)
                 except TypeError:
                     count = 0
-        colour = "#15803d" if count else "#9ca3af"
+        colour = "#22c55e" if count else "#64748b"
         return format_html(
             '<span style="background:{c}22;color:{c};padding:2px 9px;'
             'border-radius:10px;font-size:12px;font-weight:700;">{n}</span>',
@@ -442,7 +800,7 @@ class EmergencyLogAdmin(admin.ModelAdmin):
 
         tags = "".join(
             format_html(
-                '<span style="background:#fef2f2;color:#991b1b;padding:2px 7px;'
+                '<span style="background:#7f1d1d;color:#fca5a5;padding:2px 7px;'
                 'border-radius:8px;font-size:11px;margin:2px;display:inline-block;">{}</span>',
                 k.keyword if hasattr(k, "keyword") else str(k),
             )
@@ -453,8 +811,8 @@ class EmergencyLogAdmin(admin.ModelAdmin):
     @admin.display(description="📍 Location", ordering="location_shared")
     def location_shared_icon(self, obj):
         if obj.location_shared:
-            return format_html('<span style="color:#16a34a;font-size:15px;" title="Location shared">✔</span>')
-        return format_html('<span style="color:#d1d5db;" title="Not shared">✘</span>')
+            return format_html('<span style="color:#22c55e;font-size:15px;" title="Location shared">✔</span>')
+        return format_html('<span style="color:#64748b;" title="Not shared">✘</span>')
 
 
 # ─────────────────────────────────────────────
@@ -518,9 +876,9 @@ class ChatAnalyticsAdmin(admin.ModelAdmin):
     @admin.display(description="New / Returning")
     def user_breakdown(self, obj):
         return format_html(
-            '<span style="color:#2563eb;font-weight:600;">{new}</span>'
-            '<span style="color:#9ca3af;"> / </span>'
-            '<span style="color:#7c3aed;font-weight:600;">{ret}</span>',
+            '<span style="color:#3b82f6;font-weight:600;">{new}</span>'
+            '<span style="color:#64748b;"> / </span>'
+            '<span style="color:#a78bfa;font-weight:600;">{ret}</span>',
             new=obj.new_users or 0,
             ret=obj.returning_users or 0,
         )
