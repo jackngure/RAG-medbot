@@ -529,7 +529,7 @@
     <div class="chat-container">
         <div class="chat-header">
             <h1>SELF-DIAGNOSIS MEDICAL CHATBOT</h1>
-            <p>Your 24/7 First Aid Guide for Common Diseases | Emergency Detection and Map showing Murang'a Hospitals and clinics</p>
+            <p>Your 24/7 First Aid Guide for Common Diseases | Emergency Detection providing Map showing Murang'a Hospitals and clinics</p>
             <div class="header-meta">
                 <div class="user-badge" id="user-badge">
                     Session: <span id="session-id-display">Loading...</span>
@@ -542,10 +542,9 @@
             <div class="message bot">
                 <div class="message-content">
                     <div class="welcome-message">
-                        <div class="welcome-icon">👋</div>
-                        <strong>Karibu! Welcome! to the Self-Diagnosis Medical Bot </strong>
+                        <strong>Karibu! Welcome to the Self-Diagnosis Medical Bot </strong>
                     </div>
-                    I'm your Medical Bot providing first aid procedures for common diseases . Describe your symptoms and I'll provide first aid guidance.<br><br>
+                    I'm your Medical Bot providing first aid procedures for common diseases like malaria . Describe your symptoms and I'll provide first aid guidance.<br><br>
                     <span style="color: #4AA3DF;">Try saying:</span><br>
                     • "I have fever and headache"<br>
                     • "Cough and difficulty breathing"<br>
@@ -628,19 +627,16 @@
     </div>
 
     <script>
-        // ── Session Management ──────────────────────────────────────────────
+        // Session Management
         // SESSION_TTL: sessions expire after 30 minutes of inactivity.
         const SESSION_TTL_MS = 30 * 60 * 1000;
         const SESSION_KEY    = 'chat_session_id';
         const SESSION_META   = 'chat_session_meta';
         const MAX_HISTORY    = 50;
 
-        /**
-         * Generate a fresh session ID and store creation time + last-active time.
-         * Wipes any previous history for the old session.
-         */
+        //Generates a fresh session ID and stores creation time and thelast-active time. Wipes any previous history for the old session.
         function createNewSession() {
-            // Clean up old session history first
+            // Cleans up old session history first
             const oldId = localStorage.getItem(SESSION_KEY);
             if (oldId) {
                 localStorage.removeItem('chat_history_' + oldId);
@@ -660,10 +656,7 @@
             return newId;
         }
 
-        /**
-         * Check whether the stored session is still valid (not expired).
-         * If expired, create a new one and return it.
-         */
+         //Checks whether the stored session is still valid (not expired). If expired, create a new one and return it.
         function resolveSession() {
             const storedId   = localStorage.getItem(SESSION_KEY);
             const storedMeta = localStorage.getItem(SESSION_META);
@@ -679,7 +672,7 @@
                     // Session expired — start fresh automatically
                     return createNewSession();
                 }
-                // Still valid — bump last-active timestamp
+                // Still valid — bumps last-active timestamp
                 meta.lastActiveAt = now;
                 localStorage.setItem(SESSION_META, JSON.stringify(meta));
                 return storedId;
@@ -688,7 +681,7 @@
             }
         }
 
-        /** Touch (update) last-active timestamp on every user interaction. */
+        //Touch(updating) last-active timestamp on every user interaction. 
         function touchSession() {
             const storedMeta = localStorage.getItem(SESSION_META);
             if (!storedMeta) return;
@@ -699,7 +692,7 @@
             } catch (_) { /* ignore */ }
         }
 
-        /** Remove history keys for sessions older than 7 days. */
+        //Remove history keys for sessions older than 7 days. 
         function purgeOldHistoryKeys() {
             const cutoff = Date.now() - (7 * 24 * 60 * 60 * 1000);
             const keysToRemove = [];
@@ -721,7 +714,7 @@
         let sessionId = resolveSession();
         document.getElementById('session-id-display').textContent = sessionId.substr(0, 8) + '...';
 
-        // ── New-session flow ────────────────────────────────────────────────
+        // New-session flow 
         function promptNewSession() {
             document.getElementById('session-confirm').classList.add('active');
         }
@@ -741,8 +734,8 @@
                 <div class="message bot">
                     <div class="message-content">
                         <div class="welcome-message">
-                            <div class="welcome-icon">👋</div>
-                            <strong>Karibu! Welcome!</strong>
+                            
+                            <strong>Karibu! Welcome to the Self-Diagnosis Medical Bot</strong>
                         </div>
                         I'm your Medical bot for common diseases. Describe your symptoms and I'll provide first aid guidance.<br><br>
                         <span style="color: #4AA3DF;">Try saying:</span><br>
@@ -934,7 +927,7 @@
             if (!currentDisease) {
                 console.error('No disease to submit feedback for');
                 closeFeedback();
-                addMessage("Thank you for your interest in providing feedback! 🙏", false);
+                addMessage("Thank you for your interest in providing feedback!", false);
                 return;
             }
         
@@ -958,7 +951,7 @@
                 const data = await response.json();
                 if (data.status === 'success') {
                     closeFeedback();
-                    addMessage("Thank you for your feedback! It helps us improve the quality of medical advice. 🙏", false);
+                    addMessage("Thank you for your feedback! It helps us improve the quality of medical advice.", false);
                     console.log('Feedback submitted successfully for:', currentDisease);
                 } else {
                     console.error('Feedback submission failed:', data);
@@ -968,7 +961,7 @@
             } catch (error) {
                 console.error('Feedback error:', error);
                 closeFeedback();
-                addMessage("Thank you for your feedback! We appreciate your input. 🙏", false);
+                addMessage("Thank you for your feedback! We appreciate your input.", false);
             }
             
             // Reset current disease after feedback
@@ -989,7 +982,7 @@
             }
         }
 
-        // ── Utilities ───────────────────────────────────────────────────────
+        // Utilities 
         function getCookie(name) {
             let cookieValue = null;
             if (document.cookie && document.cookie !== '') {

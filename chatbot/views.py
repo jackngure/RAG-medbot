@@ -1,16 +1,11 @@
 # chatbot/views.py
 """
-Medical Chatbot Views
-
-Handles chat processing, emergency detection, symptom extraction,
-RAG retrieval, user feedback management, and analytics.
-
-Fully aligned with models:
+Handles chat processing, emergency detection, symptom extraction,RAG retrieval, user feedback management, and analytics.
+It is fully aligned with models:
     Disease, Symptom, FirstAidProcedure, EmergencyKeyword,
     UserProfile, ChatSession, ChatMessage, SymptomLog,
     EmergencyLog, FirstAidFeedback, ChatAnalytics
 """
-
 from typing import Dict, List, Optional, Tuple, Any
 from django.shortcuts import render
 from django.http import JsonResponse
@@ -38,9 +33,7 @@ from .rag_retriever import get_rag_retriever
 logger = logging.getLogger(__name__)
 nlp_processor = MedicalNLPProcessor()
 
-# ============================================================================
-# CONSTANTS
-# ============================================================================
+#Constants that are applied
 
 SEVERITY_LEVELS = {
     'CRITICAL': 3,
@@ -53,24 +46,18 @@ CONFIDENCE_THRESHOLD = 0.5
 CONFIDENCE_LOW_THRESHOLD = 0.5
 RATE_LIMIT_SECONDS = 1
 NEARBY_HOSPITALS_LIMIT = 10
-HOSPITAL_SEARCH_RADIUS = 5000       # metres
-HAVERSINE_RADIUS = 6371             # km
-API_REQUEST_TIMEOUT = 10            # seconds
+HOSPITAL_SEARCH_RADIUS = 5000       #in metres
+HAVERSINE_RADIUS = 6371             #in kilometres
+API_REQUEST_TIMEOUT = 10            #in seconds
 MAX_FEEDBACK_LENGTH = 5000
 VALID_AGE_GROUPS = {'0-12', '13-17', '18-35', '36-50', '51+', 'unknown'}
 VALID_GENDERS = {'male', 'female', 'other', 'unknown'}
 
-
-# ============================================================================
-# UTILITY FUNCTIONS
-# ============================================================================
+#Utility Function
 
 def get_client_ip(request) -> str:
-    """
-    Extract client IP address from request.
-
-    Handles X-Forwarded-For header for proxied requests.
-    """
+    #It Extract client IP address from request. Handles X-Forwarded-For header for proxied requests.
+    
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
     if x_forwarded_for:
         return x_forwarded_for.split(',')[0].strip()
@@ -80,14 +67,12 @@ def get_client_ip(request) -> str:
 def get_or_create_user_profile(request, session_id: str) -> 'UserProfile':
     """
     Get or create a UserProfile from session_id.
-
     Updates last_seen on every call and increments total_sessions only
     for genuinely new sessions (first_seen == last_seen within the same
     second is a reasonable proxy, but we use a cache flag instead so we
     don't bump the counter on every page reload within the same session).
-
     Raises:
-        ValidationError: when session_id is empty / None.
+        ValidationError: when session_id is empty or none.
     """
     if not session_id:
         raise ValidationError("Session ID is required")
@@ -109,12 +94,8 @@ def get_or_create_user_profile(request, session_id: str) -> 'UserProfile':
 
 
 def get_or_create_session(session_id: str, profile: 'UserProfile') -> Tuple['ChatSession', bool]:
-    """
-    Atomically get or create a ChatSession, ensuring the profile is linked.
-
-    Returns:
-        (ChatSession, created: bool)
-    """
+    #it get or create a ChatSession, ensuring the profile is linked.
+    #Returns: (ChatSession, created: bool)
     with transaction.atomic():
         session, created = ChatSession.objects.get_or_create(
             session_id=session_id,
@@ -132,11 +113,9 @@ def calculate_distance(
     lat2: Optional[float],
     lon2: Optional[float]
 ) -> float:
-    """
-    Haversine distance between two points (km).
-
-    Returns 999_999 when either destination coordinate is None/invalid.
-    """
+    #Haversine distance between two points (km).
+    #Returns 999_999 when either destination coordinate is None or invalid.
+    
     if lat2 is None or lon2 is None:
         return 999_999
 
@@ -157,15 +136,13 @@ def format_medical_response(
     confidence: float
 ) -> str:
     """
-    Build a structured markdown first-aid response.
-
+    Builds a structured markdown first-aid response.
     Args:
         disease:    Disease name.
         first_aid:  Dict with keys 'steps', 'warning_notes', 'when_to_seek_help'.
         confidence: RAG confidence score (0–1).
 
-    Returns:
-        Formatted string ready for the front-end.
+    it returns:Formatted string ready for the front-end.
     """
     lines = [
         f"**Based on your symptoms, you may have {disease}**\n",
@@ -190,7 +167,7 @@ def format_medical_response(
 
 
 def validate_message(message: str) -> Tuple[bool, Optional[str]]:
-    """Return (is_valid, error_message)."""
+    #Return (is_valid, error_message).
     if not message or not message.strip():
         return False, "Message cannot be empty"
     if len(message) < MIN_MESSAGE_LENGTH:
@@ -201,7 +178,7 @@ def validate_message(message: str) -> Tuple[bool, Optional[str]]:
 
 
 def check_rate_limit(session_id: str) -> Tuple[bool, Optional[str]]:
-    """Simple per-session rate limiter backed by Django cache."""
+    #Simple per-session rate limiter backed by Django cache.
     cache_key = f"msg_rate_{session_id}"
     if cache.get(cache_key):
         logger.warning(f"Rate limit hit for session {session_id[:8]}")
@@ -211,7 +188,7 @@ def check_rate_limit(session_id: str) -> Tuple[bool, Optional[str]]:
 
 
 def validate_coordinates(lat: Any, lng: Any) -> Tuple[bool, Optional[str]]:
-    """Validate lat/lng values are present and numeric."""
+    #Validate lat/lng values are present and numeric.
     if lat is None or lng is None:
         return False, "Latitude and longitude are required"
     if not isinstance(lat, (int, float)) or not isinstance(lng, (int, float)):
@@ -221,13 +198,10 @@ def validate_coordinates(lat: Any, lng: Any) -> Tuple[bool, Optional[str]]:
     return True, None
 
 
-def _update_daily_analytics(profile: 'UserProfile') -> None:
-    """
-    Increment or create today's ChatAnalytics row.
-
-    Tracks new vs returning users via a daily cache flag per session.
-    Does NOT raise — analytics failures must never break the main flow.
-    """
+def _update_daily_analytics(profile: 'UserProfile') -> None: 
+    #Increment or create today's ChatAnalytics row.
+    #Tracks new vs returning users via a daily cache flag per session.
+    #Does NOT raise — analytics failures must never break the main flow.
     try:
         today = date.today()
         cache_flag = f"seen_today_{profile.session_id}_{today}"
@@ -250,9 +224,7 @@ def _update_daily_analytics(profile: 'UserProfile') -> None:
 
 
 def _resolve_session_id(request, data: dict) -> str:
-    """
-    Resolve session_id from POST body or Django session (creating one if needed).
-    """
+    #Resolve session_id from POST body or Django session (creating one if needed).
     session_id = data.get('session_id')
     if not session_id:
         if not request.session.session_key:
@@ -261,17 +233,11 @@ def _resolve_session_id(request, data: dict) -> str:
     return session_id
 
 
-# ============================================================================
-# VIEWS
-# ============================================================================
-
+#VIEWS For the Self diagnosis medical chatbot
 def chat_interface(request):
-    """
-    Render the chat interface.
-
-    Creates a new Django session if one doesn't exist, then ensures
-    a UserProfile exists for this visitor.
-    """
+    #Renders the chat interface.
+    #Creates a new Django session if one doesn't exist, then ensures a UserProfile exists for this visitor.
+    
     try:
         if not request.session.session_key:
             request.session.create()
@@ -297,13 +263,12 @@ def chat_interface(request):
 def process_message(request):
     """
     Core message-processing endpoint.
-
     Pipeline:
         1. Parse & validate request
-        2. Rate-limit check
-        3. Resolve / create UserProfile + ChatSession
+        2. Rate-limit checking
+        3. Resolve or create UserProfile and ChatSession
         4. Persist user ChatMessage
-        5. NLP – tokenise & extract symptoms
+        5. NLP ie NTLK AND spacy tokenise & extract symptoms
         6. Emergency detection (EmergencyKeyword table + NLP)
         7. RAG retrieval → FirstAidProcedure
         8. Persist SymptomLog (with matched_diseases as JSON)
@@ -311,14 +276,12 @@ def process_message(request):
        10. Update ChatAnalytics
 
     Request JSON
-    ───────────
     {
         "message":    str  (1–5000 chars, required),
-        "session_id": str  (optional – falls back to Django session)
+        "session_id": str  (falls back to Django session)
     }
 
     Response JSON (normal)
-    ──────────────────────
     {
         "type": "normal",
         "message": str,
@@ -327,7 +290,6 @@ def process_message(request):
     }
 
     Response JSON (emergency)
-    ─────────────────────────
     {
         "type": "emergency",
         "severity": str,
@@ -338,13 +300,12 @@ def process_message(request):
     }
 
     Response JSON (error)
-    ─────────────────────
     { "type": "error", "message": str }
     """
     logger.info("process_message called")
 
     try:
-        # ── 1. Parse ──────────────────────────────────────────────────────────
+        #1.Parse
         try:
             body = json.loads(request.body)
         except json.JSONDecodeError:
@@ -353,22 +314,22 @@ def process_message(request):
         user_message = body.get('message', '').strip()
         session_id = _resolve_session_id(request, body)
 
-        # ── 2. Validate ───────────────────────────────────────────────────────
+        #2.Validate 
         is_valid, err = validate_message(user_message)
         if not is_valid:
             return JsonResponse({'type': 'error', 'message': err}, status=400)
 
-        # ── 3. Rate limit ─────────────────────────────────────────────────────
+        #3.Rate limit
         allowed, rate_err = check_rate_limit(session_id)
         if not allowed:
             return JsonResponse({'type': 'error', 'message': rate_err}, status=429)
 
-        # ── 4. Profile + Session ──────────────────────────────────────────────
+        #4.Profile + Session
         profile = get_or_create_user_profile(request, session_id)
         session, session_created = get_or_create_session(session_id, profile)
         logger.debug(f"Session {'created' if session_created else 'retrieved'}: {session_id[:8]}")
 
-        # ── 5. Persist user message ───────────────────────────────────────────
+        #5.Persist user message 
         user_msg = ChatMessage.objects.create(
             session=session,
             user_profile=profile,
@@ -376,23 +337,23 @@ def process_message(request):
             content=user_message
         )
 
-        # ── 6. NLP ────────────────────────────────────────────────────────────
+        #6.NLP 
         symptoms: List[str] = []
         try:
-            nlp_processor.preprocess(user_message)        # side-effects / warm-up
+            nlp_processor.preprocess(user_message)        
             symptoms = nlp_processor.extract_symptoms(user_message)
             logger.debug(f"Symptoms extracted: {symptoms}")
         except Exception as exc:
             logger.error(f"NLP error: {exc}", exc_info=True)
 
-        # ── 7. Emergency detection ────────────────────────────────────────────
+        #7.Emergency detection
         emergencies: List[Dict] = []
         try:
             emergencies = nlp_processor.detect_emergency(user_message)
         except Exception as exc:
             logger.error(f"Emergency detection error: {exc}", exc_info=True)
 
-        # Also cross-check against EmergencyKeyword table (models.py source of truth)
+        #Also cross-check against EmergencyKeyword table (models.py the source of truth)
         if not emergencies:
             lower_msg = user_message.lower()
             db_keywords = EmergencyKeyword.objects.all()
@@ -412,11 +373,11 @@ def process_message(request):
             top = emergencies[0]
             logger.warning(f"EMERGENCY DETECTED – severity={top['severity']}")
 
-            # Mark message
+            #Mark message
             user_msg.emergency_detected = True
             user_msg.save(update_fields=['emergency_detected'])
 
-            # Persist EmergencyLog
+            #Persist EmergencyLog
             emergency_log = None
             try:
                 emergency_log = EmergencyLog.objects.create(
@@ -424,7 +385,7 @@ def process_message(request):
                     emergency_keywords=[e.get('keyword') for e in emergencies],
                     severity=top['severity'],
                     raw_input=user_message,
-                    # location fields remain null until the client responds
+                    #location fields remain null until the client responds
                 )
             except Exception as exc:
                 logger.error(f"EmergencyLog creation failed: {exc}", exc_info=True)
@@ -440,7 +401,7 @@ def process_message(request):
                 'emergency_id': emergency_log.id if emergency_log else None,
             })
 
-        # ── 8. RAG retrieval ──────────────────────────────────────────────────
+        #8.RAG retrieval 
         first_aid_results: List[Dict] = []
         matched_diseases: List[Dict] = []
 
@@ -458,7 +419,7 @@ def process_message(request):
             except Exception as exc:
                 logger.error(f"RAG error: {exc}", exc_info=True)
 
-            # Persist SymptomLog (matched_diseases stored as JSON list)
+            #Persist SymptomLog (matched_diseases stored as JSON list)
             try:
                 SymptomLog.objects.create(
                     user_profile=profile,
@@ -471,7 +432,7 @@ def process_message(request):
         else:
             logger.debug("No symptoms extracted – skipping RAG")
 
-        # ── 9. Build response text ────────────────────────────────────────────
+        #9.Build response text 
         if first_aid_results:
             best = first_aid_results[0]
             response_text = format_medical_response(
@@ -492,7 +453,7 @@ def process_message(request):
                 "'I have a fever, headache, and body aches'."
             )
 
-        # ── 10. Persist bot message ───────────────────────────────────────────
+        #10.Persist bot message
         try:
             ChatMessage.objects.create(
                 session=session,
@@ -527,13 +488,11 @@ def process_message(request):
 @require_http_methods(["POST"])
 def get_nearby_hospitals(request):
     """
-    Fetch nearby hospitals / clinics via OpenStreetMap Overpass API.
-
-    Updates EmergencyLog with location and hospital count when
-    emergency_id is supplied.
+    Fetch nearby hospitals or clinics via murang'a embedded map Overpassing  API.
+    Updates EmergencyLog with location and hospital count when emergency_id is supplied.
 
     Request JSON
-    ───────────
+
     {
         "latitude":     float  (required),
         "longitude":    float  (required),
@@ -542,7 +501,7 @@ def get_nearby_hospitals(request):
     }
 
     Response JSON
-    ─────────────
+
     {
         "hospitals": [
             {
@@ -570,14 +529,14 @@ def get_nearby_hospitals(request):
         lng = body.get('longitude')
         emergency_id = body.get('emergency_id')
 
-        # Validate coordinates
+        #Validate coordinates
         coords_ok, coord_err = validate_coordinates(lat, lng)
         if not coords_ok:
             return JsonResponse({'error': coord_err}, status=400)
 
         logger.debug(f"Hospital search – lat={lat}, lng={lng}")
 
-        # ── Update EmergencyLog with location ─────────────────────────────────
+        #Update emergencyLog with location 
         if emergency_id:
             try:
                 em_log = EmergencyLog.objects.get(id=emergency_id)
@@ -587,7 +546,7 @@ def get_nearby_hospitals(request):
                 em_log.save(update_fields=['location_shared', 'latitude', 'longitude'])
                 logger.info(f"EmergencyLog {emergency_id} updated with location")
 
-                # Also bump ChatAnalytics.location_shares
+                #Also bump ChatAnalytics.location_shares
                 try:
                     analytics, _ = ChatAnalytics.objects.get_or_create(date=date.today())
                     analytics.location_shares += 1
@@ -600,7 +559,7 @@ def get_nearby_hospitals(request):
             except Exception as exc:
                 logger.error(f"EmergencyLog location update failed: {exc}", exc_info=True)
 
-        # ── Overpass API query ─────────────────────────────────────────────────
+        #Overpass API query
         overpass_url = "https://overpass-api.de/api/interpreter"
         overpass_query = f"""
         [out:json];
@@ -615,7 +574,7 @@ def get_nearby_hospitals(request):
         try:
             resp = requests.post(
                 overpass_url,
-                data={'data': overpass_query},   # Overpass expects form data
+                data={'data': overpass_query},   #Overpass expects form data
                 timeout=API_REQUEST_TIMEOUT
             )
             resp.raise_for_status()
@@ -633,7 +592,7 @@ def get_nearby_hospitals(request):
                 status=503
             )
 
-        # ── Process results ───────────────────────────────────────────────────
+        #Process results 
         hospitals = []
         for element in osm_data.get('elements', []):
             try:
@@ -657,7 +616,7 @@ def get_nearby_hospitals(request):
         hospitals = hospitals[:NEARBY_HOSPITALS_LIMIT]
         logger.info(f"{len(hospitals)} hospital(s) found")
 
-        # ── Update EmergencyLog with count ────────────────────────────────────
+        #Update EmergencyLog with count
         if emergency_id:
             try:
                 em_log = EmergencyLog.objects.get(id=emergency_id)
@@ -686,12 +645,9 @@ def get_nearby_hospitals(request):
 def submit_feedback(request):
     """
     Save a FirstAidFeedback record.
-
-    Validates rating (1–5), links to the most recent SymptomLog for the
-    session, and updates ChatAnalytics.average_rating.
+    Validates rating (1–5), links to the most recent SymptomLog for the session, and updates ChatAnalytics.average_rating.
 
     Request JSON
-    ───────────
     {
         "session_id": str  (required),
         "disease":    str  (optional),
@@ -700,7 +656,6 @@ def submit_feedback(request):
     }
 
     Response JSON
-    ─────────────
     { "status": "success", "feedback_id": int }
     """
     logger.info("submit_feedback called")
@@ -716,7 +671,7 @@ def submit_feedback(request):
         rating = body.get('rating')
         feedback_text = body.get('feedback', '').strip()
 
-        # ── Validate ───────────────────────────────────────────────────────────
+        #Validate 
         if not session_id:
             return JsonResponse({'error': 'session_id is required'}, status=400)
 
@@ -732,13 +687,13 @@ def submit_feedback(request):
                 status=400
             )
 
-        # ── Resolve UserProfile ────────────────────────────────────────────────
+        #Resolve UserProfile
         try:
             profile = UserProfile.objects.get(session_id=session_id)
         except UserProfile.DoesNotExist:
             return JsonResponse({'error': 'User profile not found'}, status=404)
 
-        # ── Link most recent SymptomLog ────────────────────────────────────────
+        #Link most recent SymptomLog
         symptom_log = (
             SymptomLog.objects
             .filter(user_profile=profile)
@@ -746,7 +701,7 @@ def submit_feedback(request):
             .first()
         )
 
-        # ── Persist feedback ───────────────────────────────────────────────────
+        #Persist feedback
         feedback = FirstAidFeedback.objects.create(
             user_profile=profile,
             symptom_log=symptom_log,
@@ -757,7 +712,7 @@ def submit_feedback(request):
         )
         logger.info(f"Feedback id={feedback.id} saved – rating={rating}")
 
-        # ── Update analytics average_rating ───────────────────────────────────
+        #Update analytics average_rating
         try:
             analytics, _ = ChatAnalytics.objects.get_or_create(date=date.today())
             agg = FirstAidFeedback.objects.filter(
@@ -783,9 +738,7 @@ def submit_feedback(request):
 def update_user_profile(request):
     """
     Allow users to optionally update their demographic profile.
-
     Request JSON
-    ───────────
     {
         "session_id": str  (required),
         "age_group":  str  (optional) – one of UserProfile.age_group choices,
@@ -794,7 +747,6 @@ def update_user_profile(request):
     }
 
     Response JSON
-    ─────────────
     { "status": "updated", "profile_id": str }
     """
     try:
@@ -861,13 +813,11 @@ def update_user_profile(request):
 def get_chat_history(request):
     """
     Return the last N ChatMessages for a session.
-
     Query params:
         session_id  (required)
         limit       (optional, default=20, max=100)
 
     Response JSON
-    ─────────────
     {
         "messages": [
             {
@@ -916,14 +866,13 @@ def get_chat_history(request):
 @require_http_methods(["GET"])
 def get_analytics_summary(request):
     """
-    Return aggregated analytics for a date range (staff-only endpoint).
+    Return aggregated analytics for a date range.(for staff)
 
     Query params:
         start_date  YYYY-MM-DD (optional, defaults to today)
         end_date    YYYY-MM-DD (optional, defaults to today)
 
     Response JSON
-    ─────────────
     {
         "summary": {
             "total_users": int,
@@ -966,7 +915,7 @@ def get_analytics_summary(request):
         'top_diseases': {},
     }
 
-    # Merge top_diseases dicts from each day
+    #Merge top_diseases dicts from each day
     for row in rows:
         for disease, count in (row.top_diseases or {}).items():
             summary['top_diseases'][disease] = (

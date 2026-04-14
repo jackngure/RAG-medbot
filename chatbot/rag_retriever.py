@@ -1,24 +1,16 @@
 """
-rag_retriever.py
-================
 Retrieval-Augmented Generation (RAG) retriever for the Kenya Medical Chatbot.
-
-Architecture
-------------
+its Architecture:
 The retriever operates in two stages:
+1.Keyword matching which is primary
+   Fast, exact substring matching against each disease's ``common_symptoms``text which is derived directly from linked Symptom objects by the
+   populate_kenya_data command, so it never drifts from the M2M links.
 
-1. **Keyword matching** (primary)
-   Fast, exact substring matching against each disease's ``common_symptoms``
-   text (which is derived directly from linked Symptom objects by the
-   populate_kenya_data command, so it never drifts from the M2M links).
-
-2. **TF-IDF semantic similarity** (secondary / tiebreaker)
-   When multiple diseases share the same keyword match count, cosine similarity
-   on TF-IDF vectors is used to rank them more accurately, and to surface
+2.TF-IDF semantic similarity which is secondary or tiebreaker
+   When multiple diseases share the same keyword match count, cosine similarity on TF-IDF vectors is used to rank them more accurately, and to surface
    diseases that are conceptually relevant even when no exact keyword matches.
 
 Caching
--------
 * Disease list (DB + computed vectors): cached for ``DISEASE_CACHE_TTL`` seconds.
 * Per-query results: cached for ``QUERY_CACHE_TTL`` seconds.
 * Both caches are invalidated by the ``post_save`` signals registered in
@@ -28,7 +20,6 @@ Caching
   is refreshed).
 
 Thread safety
--------------
 The module-level singleton is instantiated once at import time, removing the
 race condition that existed in the previous double-checked locking pattern.
 """
@@ -50,53 +41,37 @@ from .models import Disease, FirstAidProcedure
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-
+#Constants to be applied
 DISEASE_CACHE_KEY = "rag_diseases_text"
-DISEASE_CACHE_TTL = 3_600       # 1 hour
-QUERY_CACHE_TTL = 300           # 5 minutes – must be <= DISEASE_CACHE_TTL
+DISEASE_CACHE_TTL = 3_600       #1 hour
+QUERY_CACHE_TTL = 300           #5 minutes – must be <= DISEASE_CACHE_TTL
 TOP_K_RESULTS = 3
-MIN_TFIDF_SIMILARITY = 0.05     # Floor below which TF-IDF matches are ignored
+MIN_TFIDF_SIMILARITY = 0.05     #Floor below which TF-IDF matches are ignored
 
 
-# ---------------------------------------------------------------------------
-# Internal type aliases
-# ---------------------------------------------------------------------------
-
+#for the Internal type aliases
 DiseaseRecord = Dict
 
-
-# ---------------------------------------------------------------------------
-# RAGRetriever
-# ---------------------------------------------------------------------------
+#RAGRetriever to be used for mapping symptom to disease
 
 class RAGRetriever:
     """
     Retrieves first-aid procedures relevant to a set of extracted symptoms.
-
-    Matching pipeline
-    -----------------
-    1. Exact keyword (substring) match against ``common_symptoms`` text.
+    Matching pipeline:
+    1. Exact keyword (substring) match against "common_symptoms" text from bot users.
     2. TF-IDF cosine similarity as a secondary score for ranking.
-    3. Combined score = ``keyword_score`` + ``TFIDF_WEIGHT * tfidf_score``.
-    4. Return the top ``TOP_K_RESULTS`` results by combined score.
+    3. Combined score = "keyword_score" + "TFIDF_WEIGHT * tfidf_score".
+    4. Return the top "TOP_K_RESULTS" results by combined score.
     """
 
-    TFIDF_WEIGHT = 0.3   # Relative importance of semantic similarity vs exact match
+    TFIDF_WEIGHT = 0.3   #it shows relative importance of semantic similarity vs exact match
 
-    # ------------------------------------------------------------------
-    # Disease data loading (cached)
-    # ------------------------------------------------------------------
+    #Disease data loading (cached)
 
     def _load_diseases(self) -> List[DiseaseRecord]:
-        """
-        Return disease data from cache or fetch from the database.
-
-        Each record contains:
-            id, name, search_text, first_aid (FirstAidProcedure | None)
-        """
+        #Returns disease data from cache or fetch from the database.
+        #Each record contains: id, name, search_text, first_aid (FirstAidProcedure or None)
+        
         cached = cache.get(DISEASE_CACHE_KEY)
         if cached is not None:
             logger.debug("RAG: serving disease list from cache.")
@@ -132,10 +107,8 @@ class RAGRetriever:
         logger.debug("RAG: %d diseases loaded and cached.", len(records))
         return records
 
-    # ------------------------------------------------------------------
-    # TF-IDF vectoriser (built on first use, then reused within process)
-    # ------------------------------------------------------------------
-
+    #TF-IDF vectoriser which is built on first use, then reused within process
+    
     def _build_tfidf_matrix(self, records: List[DiseaseRecord]):
         """
         Build a TF-IDF matrix from the disease search texts.
@@ -156,21 +129,18 @@ class RAGRetriever:
         return self._vectorizer, self._tfidf_matrix
 
     def _invalidate_tfidf(self) -> None:
-        """Drop the cached TF-IDF vectoriser so it is rebuilt on next use."""
+        #Drop the cached TF-IDF vectoriser so it is rebuilt on next use.
         self._vectorizer = None
         self._tfidf_matrix = None
 
-    # ------------------------------------------------------------------
-    # Scoring helpers
-    # ------------------------------------------------------------------
+    # Scoring helpers using an F1-style keyword score to balance pecision and recall
 
     @staticmethod
     def _keyword_score(search_text: str, symptoms: List[str]) -> tuple[float, List[str]]:
         """
         Compute an F1-style keyword score that balances:
-        - precision  = matched / disease_symptom_tokens  (avoid over-broad diseases)
-        - recall     = matched / user_symptoms            (avoid missing relevant diseases)
-
+        - precision  = matched / disease_symptom_tokens  (it avoids over-broad diseases)
+        - recall     = matched / user_symptoms     (it avoids missing relevant diseases)
         Returns (f1_score, matched_symptoms_list).
         """
         matched = [s for s in symptoms if s in search_text]
@@ -178,7 +148,7 @@ class RAGRetriever:
             return 0.0, []
 
         recall = len(matched) / len(symptoms)
-        # Approximate precision: count non-overlapping symptom tokens in search_text
+        #Approximate precision: count non-overlapping symptom tokens in search_text
         disease_token_count = max(len(search_text.split()), 1)
         precision = len(matched) / disease_token_count
 
@@ -193,19 +163,16 @@ class RAGRetriever:
         query: str,
         records: List[DiseaseRecord],
     ) -> np.ndarray:
-        """
-        Return a 1-D array of cosine similarities between the query and each
-        disease document.
-        """
+        
+        #Return a 1-D array of cosine similarities between the query and each disease document.
         vectorizer, matrix = self._build_tfidf_matrix(records)
         query_vec = vectorizer.transform([query])
         scores: np.ndarray = cosine_similarity(query_vec, matrix).flatten()
         return scores
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-
+    
+    #Define the Public API
+    
     def retrieve_relevant_first_aid(
         self,
         user_input: str,
@@ -213,19 +180,13 @@ class RAGRetriever:
     ) -> List[Dict]:
         """
         Retrieve first-aid procedures relevant to the extracted symptoms.
-
-        Parameters
-        ----------
-        user_input:
-            The raw user message (used as the TF-IDF query string).
-        extracted_symptoms:
-            A list of symptom strings extracted from the user's message.
-
-        Returns
-        -------
-        A list of up to ``TOP_K_RESULTS`` dicts, each containing:
-            ``disease``, ``confidence``, ``matched_symptoms``, ``first_aid``
-        Sorted by descending combined confidence score.
+        Parameters:
+        1.user_input: The raw user message which is used as the TF-IDF query string.
+        2.extracted_symptoms: A list of symptom strings extracted from the user's message.
+        what it Returns:
+        1.A list of up to "TOP_K_RESULTS" dicts, each containing:
+            "disease", "confidence", "matched_symptoms", "first_aid"
+        2.Sorted by descending combined confidence score.
         """
         logger.debug("RAG retrieve called. user_input=%r symptoms=%r", user_input, extracted_symptoms)
 
@@ -233,12 +194,12 @@ class RAGRetriever:
             logger.debug("RAG: no symptoms provided, returning empty result.")
             return []
 
-        # Normalise and deduplicate
+        #Normalise and deduplicate
         normalised: List[str] = sorted({s.lower().strip() for s in extracted_symptoms if s.strip()})
         if not normalised:
             return []
 
-        # Per-query cache (keyed on the normalised, sorted symptom list)
+        #Per-query cache which is keyed on the normalised, sorted symptom list
         query_cache_key = (
             f"rag_result_{hashlib.md5(json.dumps(normalised).encode()).hexdigest()}"
         )
@@ -253,7 +214,7 @@ class RAGRetriever:
                 logger.warning("RAG: disease database is empty.")
                 return []
 
-            # Build query string for TF-IDF
+            #Build query string for TF-IDF
             tfidf_query = f"{user_input.lower()} {' '.join(normalised)}"
             semantic_scores = self._tfidf_scores(tfidf_query, records)
 
@@ -307,7 +268,7 @@ class RAGRetriever:
     def invalidate_caches(self) -> None:
         """
         Clear both the disease-list cache and the in-process TF-IDF state.
-        Call this after bulk data changes (e.g. after running populate_kenya_data)
+        Call this after bulk data changesfor example after running populate_kenya_data)
         when the post_save signals have not fired.
         """
         cache.delete(DISEASE_CACHE_KEY)
@@ -315,13 +276,11 @@ class RAGRetriever:
         logger.info("RAG: all caches invalidated.")
 
 
-# ---------------------------------------------------------------------------
-# Module-level singleton  (instantiated once at import time – thread-safe)
-# ---------------------------------------------------------------------------
+#Module-level singleton (instantiated once at import time – thread-safe)
 
 _retriever: RAGRetriever = RAGRetriever()
 
 
 def get_rag_retriever() -> RAGRetriever:
-    """Return the shared RAGRetriever singleton."""
+    #Return the shared RAGRetriever singleton
     return _retriever

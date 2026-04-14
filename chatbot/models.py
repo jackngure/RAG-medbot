@@ -1,4 +1,4 @@
-# chatbot/models.py
+#chatbot/models.py
 from django.db import models
 from django.contrib.auth.models import User
 from django.contrib.postgres.search import SearchVectorField
@@ -7,7 +7,7 @@ import uuid
 from django.utils import timezone
 
 class Disease(models.Model):
-    """Kenyan diseases with search optimization for RAG"""
+    #Kenyan diseases with search optimization for RAG retriver augmented generation
     name = models.CharField(max_length=200)
     description = models.TextField()
     common_symptoms = models.TextField(help_text="Comma-separated list of symptoms")
@@ -24,7 +24,7 @@ class Disease(models.Model):
         ]
 
 class Symptom(models.Model):
-    """Individual symptoms for precise matching"""
+    #Individual symptoms for precise matching
     name = models.CharField(max_length=100, unique=True)
     alternative_names = models.TextField(blank=True, help_text="Common variations")
     diseases = models.ManyToManyField(Disease, related_name='symptoms', blank=True)
@@ -33,7 +33,7 @@ class Symptom(models.Model):
         return self.name
 
 class FirstAidProcedure(models.Model):
-    """First aid instructions"""
+    #First aid instructions
     disease = models.ForeignKey(Disease, on_delete=models.CASCADE, related_name='first_aid_procedures')
     title = models.CharField(max_length=200)
     steps = models.TextField(help_text="Step-by-step instructions")
@@ -44,7 +44,7 @@ class FirstAidProcedure(models.Model):
         return f"{self.disease.name}: {self.title}"
 
 class EmergencyKeyword(models.Model):
-    """Emergency detection keywords"""
+    #Emergency detection keywords
     SEVERITY_CHOICES = [
         ('CRITICAL', 'Immediate Emergency'),
         ('URGENT', 'Seek Care Within Hours'),
@@ -59,11 +59,11 @@ class EmergencyKeyword(models.Model):
         return f"{self.keyword} ({self.severity})"
 
 class UserProfile(models.Model):
-    """Extended user profile for chatbot users"""
+    #Extended user profile for chatbot users
     user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
     session_id = models.CharField(max_length=100, unique=True, default=uuid.uuid4)
     
-    # Demographics (optional)
+    #Demographics for users
     age_group = models.CharField(max_length=20, choices=[
         ('0-12', 'Child (0-12)'),
         ('13-17', 'Teen (13-17)'),
@@ -82,11 +82,11 @@ class UserProfile(models.Model):
     
     location = models.CharField(max_length=200, blank=True, help_text="City/Region in Kenya")
     
-    # Device info
+    #for the device info
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.TextField(blank=True)
     
-    # Timestamps
+    #Timestamps to be applied
     first_seen = models.DateTimeField(auto_now_add=True)
     last_seen = models.DateTimeField(auto_now=True)
     total_sessions = models.IntegerField(default=1)
@@ -95,7 +95,7 @@ class UserProfile(models.Model):
         return f"{self.session_id[:8]}... ({self.first_seen.date()})"
 
 class ChatSession(models.Model):
-    """Track conversations"""
+    #Track conversations
     session_id = models.CharField(max_length=100, unique=True)
     user_profile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, null=True, blank=True, related_name='chat_sessions')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -105,7 +105,7 @@ class ChatSession(models.Model):
         return f"{self.session_id[:8]}... ({self.created_at.date()})"
 
 class ChatMessage(models.Model):
-    """Store chat history for context"""
+    #Store the chat history for any user context
     session = models.ForeignKey(ChatSession, on_delete=models.CASCADE, related_name='messages')
     user_profile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, null=True, blank=True, related_name='chat_messages')
     role = models.CharField(max_length=10, choices=[('user', 'User'), ('bot', 'Bot')])
@@ -117,7 +117,7 @@ class ChatMessage(models.Model):
         return f"{self.role}: {self.content[:50]}..."
 
 class SymptomLog(models.Model):
-    """Track all symptoms reported by users"""
+    #Track for all symptoms reported by users
     user_profile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='symptom_logs')
     symptoms = models.JSONField()
     raw_input = models.TextField()
@@ -128,7 +128,7 @@ class SymptomLog(models.Model):
         return f"{self.user_profile} - {', '.join(self.symptoms[:3])}..."
 
 class EmergencyLog(models.Model):
-    """Track all emergency detections"""
+    #Track for all emergency detections
     user_profile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='emergency_logs')
     emergency_keywords = models.JSONField()
     severity = models.CharField(max_length=20)
@@ -143,7 +143,7 @@ class EmergencyLog(models.Model):
         return f"{self.user_profile} - {self.severity}: {self.emergency_keywords}"
 
 class FirstAidFeedback(models.Model):
-    """Track user feedback on first aid responses"""
+    #Track user feedback on first aid responses
     user_profile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='feedback')
     symptom_log = models.ForeignKey(SymptomLog, on_delete=models.CASCADE, null=True, blank=True)
     disease_name = models.CharField(max_length=200)
@@ -151,10 +151,8 @@ class FirstAidFeedback(models.Model):
     
     RATING_CHOICES = [
         (1, '1 - Not Helpful'),
-        (2, '2 - Somewhat Helpful'),
         (3, '3 - Helpful'),
-        (4, '4 - Very Helpful'),
-        (5, '5 - Extremely Helpful'),
+        (5, '5 - Very Helpful'),
     ]
     
     rating = models.IntegerField(choices=RATING_CHOICES, null=True, blank=True)
@@ -165,38 +163,38 @@ class FirstAidFeedback(models.Model):
         return f"{self.user_profile} - {self.disease_name}: {self.rating if self.rating else 'No rating'}"
 
 class ChatAnalytics(models.Model):
-    """Aggregated analytics for reporting"""
+    #for Aggregated analytics for reporting
     date = models.DateField(unique=True)
     
-    # User metrics
+    #for User metrics
     total_users = models.IntegerField(default=0)
     new_users = models.IntegerField(default=0)
     returning_users = models.IntegerField(default=0)
     
-    # Message metrics
+    #for Message metrics
     total_messages = models.IntegerField(default=0)
     avg_messages_per_user = models.FloatField(default=0.0)
     
-    # Emergency metrics
+    #for Emergency metrics
     emergency_detections = models.IntegerField(default=0)
     location_shares = models.IntegerField(default=0)
     emergency_rate = models.FloatField(default=0.0)
     
-    # Feedback metrics
+    #for Feedback metrics
     average_rating = models.FloatField(default=0.0)
-    total_feedback = models.IntegerField(default=0)  # Add this
-    rating_distribution = models.JSONField(default=dict)  # Add this
+    total_feedback = models.IntegerField(default=0)  
+    rating_distribution = models.JSONField(default=dict)  
     
-    # Disease metrics
+    #for Disease metrics
     top_diseases = models.JSONField(default=dict)
     
-    # Usage metrics
-    peak_hours = models.JSONField(default=dict)  # Add this
+    #for Usage metrics
+    peak_hours = models.JSONField(default=dict)  
     
-    # Metadata
-    is_complete = models.BooleanField(default=False)  # Add this
-    error_occurred = models.BooleanField(default=False)  # Add this
-    error_message = models.TextField(blank=True)  # Add this
+    #for the Metadata
+    is_complete = models.BooleanField(default=False)  
+    error_occurred = models.BooleanField(default=False)  
+    error_message = models.TextField(blank=True)  
     
     class Meta:
         indexes = [

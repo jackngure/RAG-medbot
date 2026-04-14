@@ -6,8 +6,7 @@ import re
 import logging
 from django.core.cache import cache
 
-# Download NLTK data at import time (quietly); missing data falls back to
-# simple splitting — never crashes the import.
+#Downloading the NLTK data at import time
 try:
     nltk.download("punkt",     quiet=True)
     nltk.download("stopwords", quiet=True)
@@ -20,40 +19,24 @@ logger = logging.getLogger(__name__)
 
 class MedicalNLPProcessor:
     """
-    Medical NLP processor aligned with the Kenya-specific knowledge base
-    defined in populate_kenya_data.py.
-
-    Symptom variations and emergency keyword patterns exactly mirror
-    SYMPTOM_CATALOGUE and EMERGENCY_CATALOGUE so the NLP layer never drifts
+    Medical NLP processor is aligned with the Kenya-specific medical knowledge base defined in populate_kenya_data.py.
+    Symptom variations and emergency keyword patterns exactly reflects. 29 SYMPTOM_CATALOGUE and 14 EMERGENCY_CATALOGUE so the NLP layer never drifts
     from what the database contains.
 
-    Key improvements over the original
-    ------------------------------------
-    * Symptom variations expanded from 10 to all 29 catalogue symptoms.
-    * Emergency patterns cover all 14 catalogue keywords (including typo
-      variants) and add an explicit severity map so callers can react
-      differently to CRITICAL vs HIGH events.
-    * ORM objects are no longer pickled into the cache — plain dicts are used
-      instead, which are safe across schema migrations.
-    * All debug output goes through logging (logger.debug) rather than print();
-      control verbosity via Django's LOGGING settings.
-    * Input validation guards against None / empty strings.
-    * Empty alternative-name tokens (e.g. trailing commas) are silently skipped.
-    * spaCy model loading never triggers a network download at request time;
-      if the model is absent an informative error is raised immediately.
+    * All debug output goes through logging (logger.debug) to control verbosity via Django's LOGGING settings.
+    * Input validation guards against None or empty strings.
+    * Empty alternative-name tokens for example trailing commas are silently skipped.
+    * spaCy model loading never triggers a network download at request time; if the model is absent an informative error is raised immediately.
     """
 
-    # ------------------------------------------------------------------
-    # Cache configuration
-    # ------------------------------------------------------------------
-    SYMPTOMS_CACHE_TIMEOUT          = 3600   # 1 hour
+    
+    #Cache configuration to handle frequently accessed data in medical knowledgebase
+    SYMPTOMS_CACHE_TIMEOUT          = 3600   #this is 1 hour
     EMERGENCY_KEYWORDS_CACHE_TIMEOUT = 3600
 
-    # ------------------------------------------------------------------
-    # Symptom variations
-    # Derived directly from SYMPTOM_CATALOGUE alternative_names fields.
-    # Each list item is a substring we look for in the lowercased input.
-    # ------------------------------------------------------------------
+    #Symptom variations derived directly from SYMPTOM_CATALOGUE alternative_names fields.
+    #Each list item is a substring we look for in the lowercased input.
+    
     SYMPTOM_VARIATIONS: dict = {
         "fever": [
             "fever", "high temperature", "hot body", "sweating", "chills",
@@ -170,14 +153,13 @@ class MedicalNLPProcessor:
         ],
     }
 
-    # ------------------------------------------------------------------
-    # Emergency keyword → severity map
-    # Mirrors EMERGENCY_CATALOGUE exactly (including typo variants).
-    # ------------------------------------------------------------------
+    # Emergency keyword for the severity map
+    # it reflects EMERGENCY_CATALOGUE exactly and includes typo variants
+
     EMERGENCY_SEVERITY: dict = {
-        # CRITICAL
+        #CRITICAL
         "unconscious":      "CRITICAL",
-        "unconcious":       "CRITICAL",   # intentional typo variant
+        "unconcious":       "CRITICAL",   
         "not breathing":    "CRITICAL",
         "severe bleeding":  "CRITICAL",
         "snake bite":       "CRITICAL",
@@ -185,22 +167,18 @@ class MedicalNLPProcessor:
         "heart attack":     "CRITICAL",
         "drowning":         "CRITICAL",
         "poison":           "CRITICAL",
-        # HIGH
+        #HIGH
         "seizure":          "HIGH",
-        "convulsions":      "HIGH",
         "burn":             "HIGH",
         "fainting":         "HIGH",
         "bleeding":         "HIGH",
     }
 
-    # ------------------------------------------------------------------
-    # Initialisation
-    # ------------------------------------------------------------------
+    #Initialisation
 
     def __init__(self) -> None:
-        # Fail fast if the spaCy model is missing rather than blocking a web
-        # worker with a multi-second download.  Install the model via:
-        #   python -m spacy download en_core_web_sm
+        #Fail fast if the spaCy model is missing 
+        #Install the model via:python -m spacy download en_core_web_sm
         try:
             self.nlp = spacy.load("en_core_web_sm")
         except OSError as exc:
@@ -211,16 +189,9 @@ class MedicalNLPProcessor:
 
         self.stop_words = set(stopwords.words("english"))
 
-    # ------------------------------------------------------------------
-    # Private: database helpers (cached, returns plain dicts)
-    # ------------------------------------------------------------------
-
+    #Return all Symptom rows as plain dicts.Falls back to an empty list on error so extraction can still run using SYMPTOM_VARIATIONS.
     def _get_all_symptoms(self) -> list:
-        """
-        Return all Symptom rows as plain dicts (safe to pickle in any cache
-        backend).  Falls back to an empty list on error so extraction can
-        still run using SYMPTOM_VARIATIONS.
-        """
+        
         cache_key = "medical_nlp_all_symptoms"
         symptoms = cache.get(cache_key)
         if symptoms is not None:
@@ -241,10 +212,7 @@ class MedicalNLPProcessor:
         return symptoms
 
     def _get_emergency_keywords(self) -> list:
-        """
-        Return all EmergencyKeyword rows as plain dicts, cached.
-        Falls back to an empty list on error.
-        """
+        
         cache_key = "medical_nlp_emergency_keywords"
         keywords = cache.get(cache_key)
         if keywords is not None:
@@ -263,16 +231,10 @@ class MedicalNLPProcessor:
             keywords = []
 
         return keywords
-
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
+    
 
     def preprocess(self, text: str) -> list:
-        """
-        Lowercase, strip special characters, tokenise, and remove stop-words.
-        Returns a list of tokens.
-        """
+        #Lowercase, strip special characters, tokenise, and remove stop-words.Returns a list of tokens.
         if not text or not isinstance(text, str):
             return []
 
@@ -287,16 +249,11 @@ class MedicalNLPProcessor:
         return [t for t in tokens if t not in self.stop_words]
 
     def extract_symptoms(self, text: str) -> list:
-        """
-        Extract symptoms from free text using two complementary methods:
-
-        1. DB matching — checks every Symptom row's name and
-           alternative_names (cached as plain dicts).
-        2. Pattern matching — checks SYMPTOM_VARIATIONS for any substring
-           that appears in the lowercased input.
-
-        Returns a deduplicated, order-preserving list of symptom name strings.
-        """
+        #Extract symptoms from free text using two methods for efficency matching:
+        #1.DB matching which checks every symptom row's name and alternative_names and cached as plain dicts
+        #2.Pattern matching which checks SYMPTOM_VARIATIONS for any substring that appears in the lowercased user input 
+        #Returns deduplicated , order-preserving list of symptom name strings   alternative_names (cached as plain dicts).
+        
         if not text or not isinstance(text, str):
             return []
 
@@ -306,7 +263,7 @@ class MedicalNLPProcessor:
 
         logger.debug("extract_symptoms | input: %r", text)
 
-        # --- Method 1: database symptom matching ---
+        #1.for the database symptom matching 
         all_symptoms = self._get_all_symptoms()
         logger.debug("extract_symptoms | DB symptoms loaded: %d", len(all_symptoms))
 
@@ -332,7 +289,7 @@ class MedicalNLPProcessor:
                         )
                     break
 
-        # --- Method 2: SYMPTOM_VARIATIONS pattern matching ---
+        #2.for the SYMPTOM_VARIATIONS pattern matching
         for symptom_key, variations in self.SYMPTOM_VARIATIONS.items():
             for variation in variations:
                 if variation in text_lower:
@@ -343,23 +300,16 @@ class MedicalNLPProcessor:
                             "extract_symptoms | pattern match '%s' → %s",
                             variation, symptom_key,
                         )
-                    break   # one match per symptom_key is enough
+                    break   #one match per symptom_key is enough
 
         logger.debug("extract_symptoms | result: %s", extracted)
         return extracted
 
     def detect_emergency(self, text: str) -> list:
-        """
-        Detect emergency situations by scanning the text for known keywords.
-
-        Checks the database first (cached plain dicts); falls back to
-        EMERGENCY_SEVERITY for any keywords the DB does not cover.
-
-        Returns a list of dicts:
-            [{"keyword": str, "severity": str, "message": str}, ...]
-
-        Sorted so CRITICAL entries appear before HIGH entries.
-        """
+        #Detect emergency situations by scanning the text for known keywords.
+        #Checks the database first -cached plain dicts; falls back to EMERGENCY_SEVERITY for any keywords the DB does not cover.
+        #Returns a list of dicts:[{"keyword": str, "severity": str, "message": str}, ...]Sorted so CRITICAL entries appear before HIGH entries.
+        
         if not text or not isinstance(text, str):
             return []
 
@@ -369,7 +319,7 @@ class MedicalNLPProcessor:
 
         logger.debug("detect_emergency | input: %r", text)
 
-        # --- Primary: database emergency keywords ---
+        #for the Primary: database emergency keywords
         db_keywords = self._get_emergency_keywords()
         logger.debug("detect_emergency | DB keywords loaded: %d", len(db_keywords))
 
@@ -387,9 +337,7 @@ class MedicalNLPProcessor:
                     kw["keyword"], kw["severity"],
                 )
 
-        # --- Fallback: EMERGENCY_SEVERITY pattern matching ---
-        # Catches any keyword present in the severity map but absent from the
-        # DB (e.g. during a fresh install before populate_kenya_data has run).
+        #Accounts EMERGENCY_SEVERITY pattern matching which catches any keyword present in the severity map but absent from the DB.
         for keyword, severity in self.EMERGENCY_SEVERITY.items():
             if keyword in text_lower and keyword not in matched_keywords:
                 matched_keywords.add(keyword)
@@ -407,7 +355,7 @@ class MedicalNLPProcessor:
                     keyword, severity,
                 )
 
-        # Sort: CRITICAL first, then HIGH
+        #Sorting of emergency keywords:CRITICAL first, then HIGH
         severity_order = {"CRITICAL": 0, "HIGH": 1}
         emergencies.sort(key=lambda e: severity_order.get(e["severity"], 99))
 

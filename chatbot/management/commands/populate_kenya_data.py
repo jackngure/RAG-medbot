@@ -1,29 +1,22 @@
 """
 Management command: populate_kenya_data
 =======================================
-Populates the database with Kenya-specific medical data:
+Populates the self-diadnosis medical knowledge database with Kenya-specific medical data:
   - Common tropical and non-communicable diseases
   - Symptom objects with local alternative names
   - First-aid procedures contextualised for Kenyan healthcare settings
   - Emergency keywords with appropriate severity levels
 
-Usage
+Usage of this medical knowledgebase
 -----
-    python manage.py populate_kenya_data            # interactive confirmation
-    python manage.py populate_kenya_data --force    # skip confirmation prompt
+    python manage.py populate_kenya_data            #for the interactive confirmation
+    python manage.py populate_kenya_data --force    #for skipping confirmation prompt
 
-Design decisions
-----------------
-* All data is wrapped in a single transaction so a mid-run failure leaves the
-  database unchanged (full rollback).
-* Deletion order respects M2M constraints: through-table rows are cleared before
-  the parent Disease rows are removed, preventing orphan records.
-* common_symptoms on each Disease is derived automatically from the linked
-  Symptom objects (name + alternative_names), so the RAGRetriever's substring
-  matching never drifts from the M2M links.
-* Post-save cache invalidation signals are registered at the bottom of the
-  module so they fire whenever Disease or FirstAidProcedure records change
-  outside this command as well.
+Design decisions for the medical knowledgebase
+* All  disease, symptom and first aid procedures data is wrapped in a single transaction so that a mid-run failure leaves the database unchanged enforcing full rollback.
+* Deletion order respects M2M constraints: through-table rows are cleared before the parent Disease rows are removed, preventing orphan records.
+* common_symptoms on each Disease is derived automatically from the linked Symptom objects (name + alternative_names), so the RAGRetriever's substring matching never drifts from the M2M links.
+* Post-save cache invalidation signals are registered at the bottom of the module so they fire whenever Disease or FirstAidProcedure records change outside this command as well.
 * Emergency phone numbers use Kenya's official numbers (999 / 112 / 0722 999 999).
 """
 
@@ -45,17 +38,12 @@ logger = logging.getLogger(__name__)
 
 KENYA_EMERGENCY = "999 / 112"
 
-
-# ---------------------------------------------------------------------------
-# Data-transfer objects
-# ---------------------------------------------------------------------------
-
+# Data-transfer objects for symptom, disease, firstAidProcedures and emergency handling
 @dataclass
 class SymptomSpec:
     key: str
     name: str
     alternative_names: str
-
 
 @dataclass
 class DiseaseSpec:
@@ -63,7 +51,6 @@ class DiseaseSpec:
     name: str
     description: str
     symptom_keys: List[str]
-
 
 @dataclass
 class FirstAidSpec:
@@ -73,7 +60,6 @@ class FirstAidSpec:
     warning_notes: str
     when_to_seek_help: str
 
-
 @dataclass
 class EmergencySpec:
     keyword: str
@@ -82,9 +68,8 @@ class EmergencySpec:
     is_typo_variant: bool = False   # marks intentional spelling variants
 
 
-# ---------------------------------------------------------------------------
+
 # Symptom catalogue
-# ---------------------------------------------------------------------------
 
 SYMPTOM_CATALOGUE: List[SymptomSpec] = [
     SymptomSpec("fever",                    "fever",                    "high temperature, hot body, sweating, chills, feeling hot even when cold"),
@@ -119,9 +104,7 @@ SYMPTOM_CATALOGUE: List[SymptomSpec] = [
 ]
 
 
-# ---------------------------------------------------------------------------
-# Disease catalogue
-# ---------------------------------------------------------------------------
+#Disease datalogue
 
 DISEASE_CATALOGUE: List[DiseaseSpec] = [
     DiseaseSpec(
@@ -242,9 +225,7 @@ DISEASE_CATALOGUE: List[DiseaseSpec] = [
 ]
 
 
-# ---------------------------------------------------------------------------
 # First-aid catalogue
-# ---------------------------------------------------------------------------
 
 FIRST_AID_CATALOGUE: List[FirstAidSpec] = [
     FirstAidSpec(
@@ -486,10 +467,7 @@ FIRST_AID_CATALOGUE: List[FirstAidSpec] = [
     ),
 ]
 
-
-# ---------------------------------------------------------------------------
-# Emergency keyword catalogue
-# ---------------------------------------------------------------------------
+#Emergency keyword catalogue
 
 EMERGENCY_CATALOGUE: List[EmergencySpec] = [
     # --- CRITICAL ---
@@ -655,10 +633,7 @@ EMERGENCY_CATALOGUE: List[EmergencySpec] = [
 ]
 
 
-# ---------------------------------------------------------------------------
-# Management command
-# ---------------------------------------------------------------------------
-
+# Management command of the medical knowledgebase
 class Command(BaseCommand):
     help = "Populate the database with Kenya-specific medical data."
 
@@ -693,9 +668,9 @@ class Command(BaseCommand):
         self.stdout.write(f"   First-aid records : {counts['first_aid']}")
         self.stdout.write(f"   Emergency keywords: {counts['emergency_keywords']}")
 
-    # ------------------------------------------------------------------
-    # Core population logic
-    # ------------------------------------------------------------------
+
+    #The Core population logic
+    
 
     def _run_population(self) -> Dict[str, int]:
         """
@@ -718,14 +693,13 @@ class Command(BaseCommand):
             "emergency_keywords": len(EMERGENCY_CATALOGUE),
         }
 
-    # ------------------------------------------------------------------
-    # Step 1: Clear
-    # ------------------------------------------------------------------
+    # Steps to guide you if you want to use the medical knowlegebase
+    # Step 1: Clearing of existing data
 
     @staticmethod
     def _clear_existing_data() -> None:
         """
-        Delete records in an order that respects relational constraints:
+        Delete the records in an order that respects relational constraints:
         M2M through-table rows first, then parent rows.
         """
         Disease.symptoms.through.objects.all().delete()
@@ -734,9 +708,7 @@ class Command(BaseCommand):
         Symptom.objects.all().delete()
         EmergencyKeyword.objects.all().delete()
 
-    # ------------------------------------------------------------------
-    # Step 2: Symptoms
-    # ------------------------------------------------------------------
+    # Step 2: Creating Symptoms
 
     @staticmethod
     def _create_symptoms() -> Dict[str, Symptom]:
@@ -750,9 +722,7 @@ class Command(BaseCommand):
             symptom_objects[spec.key] = obj
         return symptom_objects
 
-    # ------------------------------------------------------------------
-    # Step 3: Diseases
-    # ------------------------------------------------------------------
+    # Step 3: Creating Diseases
 
     @staticmethod
     def _create_diseases(symptoms: Dict[str, Symptom]) -> Dict[str, Disease]:
@@ -761,8 +731,7 @@ class Command(BaseCommand):
         for spec in DISEASE_CATALOGUE:
             linked_symptoms = [symptoms[k] for k in spec.symptom_keys if k in symptoms]
 
-            # Derive common_symptoms from linked symptom objects so the
-            # RAGRetriever's substring matching stays consistent with M2M links.
+            # Derives common symptoms from linked symptom objects so that the RAGRetriever's substring matching stays consistent with M2M links.
             common_symptoms_parts = [spec.name.lower()]
             for sym in linked_symptoms:
                 common_symptoms_parts.append(sym.name)
@@ -779,9 +748,7 @@ class Command(BaseCommand):
 
         return disease_objects
 
-    # ------------------------------------------------------------------
-    # Step 4: First-aid procedures
-    # ------------------------------------------------------------------
+    # Step 4: Creating First-aid procedures
 
     @staticmethod
     def _create_first_aid(diseases: Dict[str, Disease]) -> None:
@@ -798,10 +765,8 @@ class Command(BaseCommand):
         ]
         FirstAidProcedure.objects.bulk_create(procedures)
 
-    # ------------------------------------------------------------------
-    # Step 5: Emergency keywords
-    # ------------------------------------------------------------------
-
+    # Step 5:Creating Emergency keywords
+    
     @staticmethod
     def _create_emergency_keywords() -> None:
         keywords = [
@@ -815,16 +780,14 @@ class Command(BaseCommand):
         EmergencyKeyword.objects.bulk_create(keywords)
 
 
-# ---------------------------------------------------------------------------
-# Cache invalidation signals
-# ---------------------------------------------------------------------------
+# For the Cache invalidation signals
 
 @receiver(post_save, sender=Disease)
 @receiver(post_save, sender=FirstAidProcedure)
-def invalidate_disease_cache(sender, **kwargs):  # noqa: ANN001
+def invalidate_disease_cache(sender, **kwargs):  
     """
-    Clear the RAG disease cache whenever a Disease or FirstAidProcedure record
-    is saved outside of this management command (e.g. via the admin or an API).
+    Clears the RAG disease cache whenever a disease or FirstAidProcedure record
+    is saved outside of this management command (for example via admin)
     """
     cache.delete("rag_diseases_text")
     logger.debug("RAG disease cache invalidated due to %s save.", sender.__name__)

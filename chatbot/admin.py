@@ -1,4 +1,3 @@
-# chatbot/admin.py - Clean version with default Django admin
 import logging
 from django.contrib import admin
 from django.utils.html import format_html
@@ -11,9 +10,7 @@ from .models import (
 
 logger = logging.getLogger(__name__)
 
-# ─────────────────────────────────────────────
-#  Shared helpers
-# ─────────────────────────────────────────────
+# Shared helpers to truncate text and for the severity handling
 
 def _truncate(text, length=60):
     """Return text truncated to `length` chars with ellipsis if needed."""
@@ -22,8 +19,7 @@ def _truncate(text, length=60):
 
 
 def _severity_badge(severity):
-    """Return a coloured HTML badge for a severity string.
-    
+    """
     Emergency levels (CRITICAL, HIGH) - require immediate attention
     First aid levels (CAUTION, LOW) - routine guidance
     """
@@ -33,10 +29,10 @@ def _severity_badge(severity):
         "high":     ("#ea580c", "#ffedd5"),  # Orange - Urgent, seek care within hours
         
         # First aid levels - Caution/Low (yellow/green for routine care)
-        "caution":  ("#d97706", "#fef3c7"),  # Yellow - Monitor carefully
-        "low":      ("#16a34a", "#dcfce7"),  # Green - Basic first aid only
+        "caution":  ("#d97706", "#fef3c7"),  # Yellow - Monitors carefully
+        "low":      ("#16a34a", "#dcfce7"),  # Green - Basic first aid only to bot users
         
-        # Default/fallback
+        # Default
         "medium":   ("#d97706", "#fef3c7"),  # Default to caution level
     }
     
@@ -58,11 +54,10 @@ def _severity_badge(severity):
 
 
 def _star_rating(rating, max_stars=5):
-    """Return appropriate visual for 3-rating system (5=Very Helpful, 3=Okay, 1=Not Helpful)"""
+    """5=Very Helpful, 3=Okay, 1=Not Helpful"""
     if rating is None:
         return "—"
     
-    # Map to 3-rating system from chat.html
     if rating == 5:
         return format_html(
             '<span style="color:#4CAF50;font-size:14px;font-weight:600;" title="Very Helpful">👍👍👍</span>'
@@ -76,7 +71,7 @@ def _star_rating(rating, max_stars=5):
             '<span style="color:#F44336;font-size:14px;font-weight:600;" title="Not Helpful">👎👎👎</span>'
         )
     else:
-        # Fallback for any other ratings (should not happen with your system)
+        # Fallbacks for any other ratings that they should not happen in this system
         filled = "★" * min(round(rating), max_stars)
         empty = "☆" * (max_stars - min(round(rating), max_stars))
         return format_html(
@@ -85,20 +80,14 @@ def _star_rating(rating, max_stars=5):
             filled=filled, empty=empty,
         )
 
+# Admin site - uses the Default Django styling
 
-# ─────────────────────────────────────────────
-#  Admin site - Default Django styling
-# ─────────────────────────────────────────────
 
-admin.site.site_header = "MedChat Administration"
-admin.site.site_title = "MedChat Admin"
+admin.site.site_header = "Self-Diagnosis MedChat Administration"
+admin.site.site_title = "Self-Diagnosis MedChat Admin"
 admin.site.index_title = "Dashboard"
 
-
-# ─────────────────────────────────────────────
-#  Knowledge Base
-# ─────────────────────────────────────────────
-
+#  Medical KnowledgeBase Management for the Self-Diagnosis medbot
 @admin.register(Disease)
 class DiseaseAdmin(admin.ModelAdmin):
     list_display = ("name", "symptom_count_badge", "description_preview", "created_at")
@@ -209,9 +198,7 @@ class EmergencyKeywordAdmin(admin.ModelAdmin):
         return _truncate(obj.response_message, 80)
 
 
-# ─────────────────────────────────────────────
-#  Chat
-# ─────────────────────────────────────────────
+#Chat Management
 
 class ChatMessageInline(admin.TabularInline):
     model = ChatMessage
@@ -294,9 +281,8 @@ class ChatMessageAdmin(admin.ModelAdmin):
         return obj.emergency_detected
 
 
-# ─────────────────────────────────────────────
-#  Users & Profiles
-# ─────────────────────────────────────────────
+
+#Users of the bot & Profiles Management
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
@@ -327,9 +313,7 @@ class UserProfileAdmin(admin.ModelAdmin):
         return sid[:10] + "…" if len(sid) > 10 else sid
 
 
-# ─────────────────────────────────────────────
-#  Logs
-# ─────────────────────────────────────────────
+#Logs Management
 
 @admin.register(SymptomLog)
 class SymptomLogAdmin(admin.ModelAdmin):
@@ -375,9 +359,7 @@ class EmergencyLogAdmin(admin.ModelAdmin):
         return obj.location_shared
 
 
-# ─────────────────────────────────────────────
-#  Feedback & Analytics
-# ─────────────────────────────────────────────
+#Feedback and Analytics Management
 @admin.register(FirstAidFeedback)
 class FirstAidFeedbackAdmin(admin.ModelAdmin):
     list_display = ("user_profile", "disease_name", "rating_badge", "rating_stars", "feedback_preview", "timestamp")
@@ -393,15 +375,12 @@ class FirstAidFeedbackAdmin(admin.ModelAdmin):
         if not obj.rating:
             return "—"
         
-        # Map to 3-rating system from chat.html
         rating_map = {
             5: {"label": "Very Helpful", "color": "#4CAF50", "bg": "#E8F5E9", "icon": "👍"},
             3: {"label": "Okay", "color": "#FF9800", "bg": "#FFF3E0", "icon": "😐"},
             1: {"label": "Not Helpful", "color": "#F44336", "bg": "#FFEBEE", "icon": "👎"},
         }
-        
         info = rating_map.get(obj.rating, {"label": "Unknown", "color": "#9E9E9E", "bg": "#F5F5F5", "icon": "?"})
-        
         return format_html(
             '<span style="background:{bg};color:{color};padding:3px 10px;'
             'border-radius:15px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:4px;">'

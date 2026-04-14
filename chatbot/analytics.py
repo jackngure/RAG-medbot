@@ -1,13 +1,10 @@
 """
-Daily analytics generation for the medical chatbot.
-Generates metrics about user activity, emergencies, feedback, and diseases.
+This accounts for the Daily analytics generation for the Self-Diagnosis medical chatbot.Generates metrics about user activity, emergencies, feedback, and diseases.
 """
-
 import logging
 from datetime import date, timedelta
 from collections import Counter
 from typing import Optional
-
 from django.db.models import Avg, Count
 from django.db.models.functions import ExtractHour
 from django.utils import timezone
@@ -23,23 +20,15 @@ from .models import (
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-
+#Constants to be apllied for efficiency of the self-diagnosis medical chatbot
 TOP_DISEASES_LIMIT = 10
 PEAK_HOURS_LIMIT = 5
 ERROR_MESSAGE_MAX_LENGTH = 500
 ERROR_SAVE_ATTEMPT = "Could not save error state to analytics record"
 
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
+#Helpers for the date control
 def _date_window(target_date: date) -> tuple[timezone.datetime, timezone.datetime]:
-    """Return a timezone-aware (start, end) window for a given calendar date."""
+    #Returns a timezone-aware (start, end) window for a given calendar date
     start = timezone.make_aware(
         timezone.datetime(target_date.year, target_date.month, target_date.day)
     )
@@ -49,7 +38,6 @@ def _date_window(target_date: date) -> tuple[timezone.datetime, timezone.datetim
 def _extract_disease_names(matched_diseases) -> list[str]:
     """
     Parse a matched_diseases value from a SymptomLog into a flat list of names.
-
     Handles three storage formats:
       - dict  → single disease record, e.g. {"name": "Malaria", ...}
       - list  → multiple disease records or plain strings
@@ -80,12 +68,10 @@ def _extract_disease_names(matched_diseases) -> list[str]:
 
 def _count_diseases(yesterday_start: timezone.datetime, yesterday_end: timezone.datetime) -> dict:
     """
-    Tally disease occurrences from SymptomLogs within the given window.
-
-    Returns a dict of {disease_name: count} for the top N diseases.
+    Counts for the disease occurrences from SymptomLogs within the given window.
+    Returns a dict of {disease_name: count} for the top X diseases.
     """
     counter: Counter = Counter()
-
     logs = SymptomLog.objects.filter(
         timestamp__gte=yesterday_start,
         timestamp__lt=yesterday_end,
@@ -100,40 +86,31 @@ def _count_diseases(yesterday_start: timezone.datetime, yesterday_end: timezone.
 
     return dict(counter.most_common(TOP_DISEASES_LIMIT))
 
-
-# ---------------------------------------------------------------------------
-# Daily analytics
-# ---------------------------------------------------------------------------
-
+#Daily analytics generation scheme
 
 def generate_daily_analytics(target_date: Optional[date] = None) -> Optional[ChatAnalytics]:
     """
-    Generate an analytics report for *target_date* (defaults to yesterday).
-
-    Calculates:
+    Generate an analytics report for the target_date where it defaults to yesterday.
+    it calculates for:
     - User activity (active, new, returning, cumulative)
     - Message statistics
     - Emergency detection metrics
     - User feedback ratings and distribution
     - Most common diseases
     - Peak usage hours
-
-    Returns:
-        Saved ChatAnalytics instance, or None if a fatal error occurs.
+    Returns:Saved ChatAnalytics instance, or none if a fatal error occurs.
     """
     if target_date is None:
         target_date = (timezone.now() - timedelta(days=1)).date()
 
     window_start, window_end = _date_window(target_date)
-
     try:
         analytics, created = ChatAnalytics.objects.get_or_create(date=target_date)
         if created:
             logger.debug("Created new analytics record for %s", target_date)
 
-        # ----------------------------------------------------------------
-        # User metrics
-        # ----------------------------------------------------------------
+        
+        #User metrics providence
 
         analytics.total_users = UserProfile.objects.filter(
             last_seen__gte=window_start,
@@ -151,18 +128,15 @@ def generate_daily_analytics(target_date: Optional[date] = None) -> Optional[Cha
             last_seen__lt=window_end,
         ).count()
 
-        # ----------------------------------------------------------------
-        # Message metrics
-        # ----------------------------------------------------------------
-
+        
+        #Message metrics
         messages_qs = ChatMessage.objects.filter(
             timestamp__gte=window_start,
             timestamp__lt=window_end,
         )
-
         analytics.total_messages = messages_qs.count()
 
-        # Get unique sessions from messages
+        #Getting unique sessions from messages
         session_count = messages_qs.values('session').distinct().count()
 
         analytics.avg_messages_per_user = (
@@ -171,10 +145,7 @@ def generate_daily_analytics(target_date: Optional[date] = None) -> Optional[Cha
             else 0
         )
 
-        # ----------------------------------------------------------------
         # Emergency metrics
-        # ----------------------------------------------------------------
-
         emergencies_qs = EmergencyLog.objects.filter(
             timestamp__gte=window_start,
             timestamp__lt=window_end,
@@ -189,11 +160,8 @@ def generate_daily_analytics(target_date: Optional[date] = None) -> Optional[Cha
             if session_count > 0
             else 0
         )
-
-        # ----------------------------------------------------------------
-        # Feedback metrics
-        # ----------------------------------------------------------------
-
+ 
+        #Feedback metrics
         feedback_agg = FirstAidFeedback.objects.filter(
             timestamp__gte=window_start,
             timestamp__lt=window_end,
@@ -208,37 +176,11 @@ def generate_daily_analytics(target_date: Optional[date] = None) -> Optional[Cha
             else 0.0
         )
         
-        # Note: total_feedback and rating_distribution aren't in your ChatAnalytics model
-        # You may want to add these fields to your model
-
-        # ----------------------------------------------------------------
-        # Disease metrics
-        # ----------------------------------------------------------------
-
+        #Disease metrics
         analytics.top_diseases = _count_diseases(window_start, window_end)
 
-        # ----------------------------------------------------------------
-        # Peak usage hours
-        # ----------------------------------------------------------------
-        # Note: This requires 'session' field in ChatMessage, but your model uses 'session_id'
-        # For now, comment this out or adjust based on your actual model structure
-        
-        # peak_hours_qs = (
-        #     messages_qs
-        #     .annotate(hour=ExtractHour("timestamp"))
-        #     .values("hour")
-        #     .annotate(message_count=Count("id"))
-        #     .order_by("-message_count")[:PEAK_HOURS_LIMIT]
-        # )
-        # analytics.peak_hours = list(peak_hours_qs)
-
-        # For now, set peak_hours as empty dict
+        #setting peak_hours as empty dict
         analytics.peak_hours = {}
-
-        # ----------------------------------------------------------------
-        # Save the record
-        # ----------------------------------------------------------------
-
         analytics.save()
 
         logger.info(
@@ -248,7 +190,6 @@ def generate_daily_analytics(target_date: Optional[date] = None) -> Optional[Cha
             analytics.emergency_detections,
             analytics.average_rating,
         )
-
         return analytics
 
     except Exception as exc:
@@ -260,21 +201,15 @@ def generate_daily_analytics(target_date: Optional[date] = None) -> Optional[Cha
         )
         return None
 
-
-# ---------------------------------------------------------------------------
-# Weekly summary
-# ---------------------------------------------------------------------------
-
+#Generating Weekly summary for analytics
 
 def generate_weekly_summary(end_date: Optional[date] = None) -> Optional[dict]:
     """
-    Aggregate daily analytics records into a 7-day summary.
-
+    it aggregates daily analytics records into a 7-day summary.
     Args:
-        end_date: Exclusive upper bound (defaults to today). The summary
-                  covers the 7 calendar days that precede this date.
+        end_date: Exclusive upper bound which defaults to today. The summary covers the 7 calendar days that precede this date.
 
-    Returns:
+    The function Returns:
         Dictionary with aggregated metrics, or None if no complete records exist.
     """
     if end_date is None:
@@ -297,13 +232,13 @@ def generate_weekly_summary(end_date: Optional[date] = None) -> Optional[dict]:
         )
         return None
 
-    # Aggregate disease counts across all days in the window
+    #Aggregate disease counts across all days in the window
     all_diseases: Counter = Counter()
     for record in records:
         if record.top_diseases:
             all_diseases.update(record.top_diseases)
 
-    # Average rating: only count days that actually have a rating
+    #Average rating: It only count days that actually have a rating
     rated_records = [r for r in records if r.average_rating > 0]
     avg_daily_rating = (
         round(sum(r.average_rating for r in rated_records) / len(rated_records), 2)
@@ -324,15 +259,8 @@ def generate_weekly_summary(end_date: Optional[date] = None) -> Optional[dict]:
     }
 
 
-# ---------------------------------------------------------------------------
-# Management command helper (optional)
-# ---------------------------------------------------------------------------
-
+#Management command that runs the analytics for yesterday
 def run_daily_analytics_job():
-    """
-    Helper function to run analytics for yesterday.
-    Can be called from a management command or cron job.
-    """
     yesterday = (timezone.now() - timedelta(days=1)).date()
     result = generate_daily_analytics(yesterday)
     
